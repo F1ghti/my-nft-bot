@@ -1,0 +1,80 @@
+Ой, извини! Ошибка 404: NOT_FOUND на твоем скриншоте означает, что ссылка, которую я дал для примера (clover-miniapp.vercel.app), больше не существует или не работает.
+
+Поскольку у тебя Windows и нет своего сайта, давай создадим твой собственный файл, который будет работать прямо на твоем компьютере. Это будет твой личный "мини-сайт" для бота.
+
+Шаг 1: Создаем "сайт" в одном файле
+В твоей папке my_bot в VS Code создай новый файл с названием index.html. Вставь в него этот код (я сделал его максимально красивым: темный фон, NFT-карточки и прокрутка):
+
+HTML
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Case Opener</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: radial-gradient(circle, #1e293b 0%, #0f172a 100%); color: white; overflow: hidden; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .roulette-container { display: flex; transition: transform 4s cubic-bezier(0.15, 0, 0.05, 1); }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="absolute top-4 left-4 flex items-center gap-2 glass p-2 rounded-full px-4">
+        <div class="w-8 h-8 bg-blue-500 rounded-full"></div>
+        <span id="username">Player</span>
+    </div>
+
+    <div class="relative w-full overflow-hidden glass rounded-xl p-4 my-8 h-48 flex items-center">
+        <div class="absolute left-1/2 top-0 bottom-0 w-1 bg-yellow-500 z-10 shadow-[0_0_15px_#eab308]"></div>
+        <div id="roulette" class="roulette-container">
+            </div>
+    </div>
+
+    <button onclick="spin()" id="spinBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-12 rounded-2xl shadow-lg transition-all active:scale-95">
+        ОТКРЫТЬ КЕЙС (100 TON)
+    </button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        document.getElementById('username').innerText = tg.initDataUnsafe.user?.first_name || "Admin";
+
+        const roulette = document.getElementById('roulette');
+        const items = [
+            {name: 'Common NFT', color: 'gray'},
+            {name: 'Rare NFT', color: 'blue'},
+            {name: 'Epic NFT', color: 'purple'},
+            {name: 'LEGENDARY', color: 'orange'}
+        ];
+
+        // Генерируем 50 случайных карточек для прокрутки
+        for (let i = 0; i < 50; i++) {
+            const item = items[Math.floor(Math.random() * items.length)];
+            const card = document.createElement('div');
+            card.className = `min-w-[120px] h-32 m-2 rounded-lg glass flex flex-col items-center justify-center border-b-4 border-${item.color}-500`;
+            card.innerHTML = `<div class='text-2xl'>💎</div><div class='text-xs mt-2'>${item.name}</div>`;
+            roulette.appendChild(card);
+        }
+
+        function spin() {
+            const spinBtn = document.getElementById('spinBtn');
+            spinBtn.disabled = true;
+            const cardWidth = 136; // ширина + отступ
+            const winnerIndex = 35; // предмет, который "выпадет"
+            const offset = (winnerIndex * cardWidth) - (window.innerWidth / 2) + (cardWidth / 2);
+            
+            roulette.style.transform = `translateX(-${offset}px)`;
+            
+            setTimeout(() => {
+                tg.HapticFeedback.notificationOccurred('success');
+                alert("Поздравляем! Вы выбили предмет!");
+                location.reload(); // Сброс для теста
+            }, 4500);
+        }
+    </script>
+</body>
+</html>
