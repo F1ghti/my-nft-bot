@@ -13,14 +13,33 @@
         .tab-content { display: none; height: calc(100vh - 100px); overflow-y: auto; padding: 20px 20px 160px 20px; }
         #cases.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #market.active, #inventory.active { display: block; }
-        .nav-btn { transition: all 0.3s ease; }
-        #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        .nav-btn { transition: all 0.3s ease; position: relative; }
+        #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); width: 90%; max-width: 400px; }
         #toast.show { top: 20px; }
         #win-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 11000; align-items: center; justify-content: center; padding: 20px; }
         #roulette-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; align-items: center; justify-content: center; }
         .roulette-window { position: relative; width: 100%; height: 140px; overflow: hidden; border-top: 2px solid #3b82f6; border-bottom: 2px solid #3b82f6; background: #111827; }
         .roulette-container { display: flex; position: absolute; left: 0; }
         .marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #f59e0b; z-index: 10; box-shadow: 0 0 15px #f59e0b; transform: translateX(-50%); }
+        
+        /* Стиль для красной точки уведомления */
+        .notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border: 2px solid #1e293b;
+            border-radius: 50%;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col p-2">
@@ -89,7 +108,10 @@
     <div id="nav-bar" class="fixed bottom-6 left-6 right-6 h-20 glass rounded-[35px] flex justify-around items-center z-50 px-4 shadow-2xl">
         <button onclick="showTab('cases', this)" class="nav-btn text-3xl opacity-100">📦</button>
         <button onclick="showTab('market', this)" class="nav-btn text-3xl opacity-40">🛒</button>
-        <button onclick="showTab('inventory', this)" class="nav-btn text-3xl opacity-40">🎒</button>
+        <button onclick="showTab('inventory', this)" class="nav-btn text-3xl opacity-40">
+            🎒
+            <div id="notif-dot" class="notification-badge"></div>
+        </button>
     </div>
 
     <script>
@@ -121,7 +143,7 @@
             document.getElementById('toast-msg').innerText = msg;
             document.getElementById('toast-icon').innerText = icon;
             t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 3000);
+            setTimeout(() => t.classList.remove('show'), 4000);
         }
 
         function showTab(tabId, btn) {
@@ -131,7 +153,11 @@
             document.getElementById(tabId).classList.add('active');
             document.querySelectorAll('.nav-btn').forEach(b => b.style.opacity = "0.4");
             if(btn) btn.style.opacity = "1";
-            if(tabId === 'inventory') sync();
+            
+            if(tabId === 'inventory') {
+                sync();
+                clearInternalNotifications(); // Убираем точку при заходе в инвентарь
+            }
             if(tabId === 'market') loadMarket();
         }
 
@@ -142,13 +168,10 @@
                 const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`, {
                     headers: fetchHeaders
                 });
-                
                 if (!res.ok) throw new Error();
                 const d = await res.json();
-                
                 document.getElementById('balance').innerText = d.balance + " 💎";
                 const grid = document.getElementById('inv-grid');
-                
                 if(!d.inventory || d.inventory.length === 0) {
                     grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Тут пока пусто...</p>';
                 } else {
@@ -160,10 +183,43 @@
                         </div>
                     `).join('');
                 }
-            } catch(e) {
-                document.getElementById('balance').innerText = "СЕРВЕР OFF";
-            }
+            } catch(e) { document.getElementById('balance').innerText = "OFFLINE"; }
         }
+
+        // --- ЛОГИКА УВЕДОМЛЕНИЙ В ИГРЕ ---
+        async function checkNotifications() {
+            try {
+                const res = await fetch(`${SERVER_URL}/get_notifications?user_id=${user.id}`, { headers: fetchHeaders });
+                const notifications = await res.json();
+                
+                if (notifications && notifications.length > 0) {
+                    // Показываем красную точку
+                    document.getElementById('notif-dot').style.display = 'block';
+                    
+                    // Показываем последний текст в Toast
+                    notifications.forEach(n => {
+                        showToast(n.message, "💰");
+                        tg.HapticFeedback.notificationOccurred('success');
+                    });
+                }
+            } catch(e) { console.error("Ошибка проверки уведомлений", e); }
+        }
+
+        async function clearInternalNotifications() {
+            document.getElementById('notif-dot').style.display = 'none';
+            try {
+                await fetch(`${SERVER_URL}/clear_notifications`, {
+                    method: 'POST',
+                    headers: fetchHeaders,
+                    body: JSON.stringify({user_id: user.id})
+                });
+            } catch(e) {}
+        }
+
+        // Запуск проверки каждые 15 секунд
+        setInterval(checkNotifications, 15000);
+        // Первичная проверка при запуске
+        checkNotifications();
 
         async function startSpin() {
             if (isSpinning) return;
@@ -300,8 +356,8 @@
                 const d = await res.json();
                 if(d.success) { 
                     showToast("Выставлено!", "✅"); 
-                    sync(); // Обновить инвентарь (вещь исчезнет)
-                    loadMarket(); // Фоново обновить маркет
+                    sync();
+                    loadMarket();
                 } else {
                     showToast(d.error || "Ошибка", "❌");
                 }
