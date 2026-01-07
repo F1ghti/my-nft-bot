@@ -51,7 +51,7 @@
         </div>
     </div>
 
- <div class="p-4 flex justify-between items-center glass m-4 rounded-3xl z-50">
+    <div class="p-4 flex justify-between items-center glass m-4 rounded-3xl z-50">
         <div class="flex items-center gap-3">
             <img id="u-pic" class="w-10 h-10 rounded-full border-2 border-blue-500 hidden">
             <div id="u-no-pic" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold text-xs shadow-lg">?</div>
@@ -63,12 +63,12 @@
         
         <div class="flex items-center gap-4">
             <div class="relative active:scale-90 transition-all cursor-pointer" onclick="handleNotifClick()">
-    <span class="text-xl">🔔</span>
-    <div id="notif-dot" class="hidden">
-        <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120] animate-ping"></span>
-        <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120]"></span>
-    </div>
-</div>
+                <span class="text-xl">🔔</span>
+                <div id="notif-dot" class="hidden"> 
+                    <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120] animate-ping"></span>
+                    <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120]"></span>
+                </div>
+            </div>
             
             <div class="text-right">
                 <p id="balance" class="text-yellow-400 font-black text-xl drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">0 💎</p>
@@ -130,6 +130,8 @@
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
+        let lastNotification = null;
+
         async function api(path, body = null) {
             try {
                 const opt = { 
@@ -141,6 +143,27 @@
             } catch(e) { console.error("API Error:", e); return {success: false}; }
         }
 
+        // --- УВЕДОМЛЕНИЯ ---
+        async function checkNotifications() {
+            const notes = await api(`/get_notifications?user_id=${user.id}`);
+            if (notes && notes.length > 0) {
+                lastNotification = notes.map(n => n.message).join("\n\n");
+                document.getElementById('notif-dot').classList.remove('hidden');
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        function handleNotifClick() {
+            if (lastNotification) {
+                tg.showAlert(lastNotification);
+                lastNotification = null;
+                document.getElementById('notif-dot').classList.add('hidden');
+            } else {
+                tg.showAlert("У вас нет новых уведомлений");
+            }
+        }
+
+        // --- ЛОГИКА ИНВЕНТАРЯ И МАРКЕТА ---
         function openItemMenu(name) {
             tg.HapticFeedback.impactOccurred('medium');
             tg.showPopup({
@@ -186,18 +209,14 @@
             });
         }
 
-        // --- НОВАЯ ФУНКЦИЯ ДЛЯ ОТМЕНЫ ЛОТА ---
         async function cancelLot(lotId) {
             tg.showConfirm("Снять предмет с продажи?", async (yes) => {
                 if (yes) {
                     const res = await api('/cancel_lot', {user_id: user.id, lot_id: lotId});
                     if (res.success) {
                         tg.showAlert("Предмет возвращен в рюкзак");
-                        loadMarket();
-                        sync();
-                    } else {
-                        tg.showAlert("Ошибка: " + res.error);
-                    }
+                        loadMarket(); sync();
+                    } else { tg.showAlert("Ошибка: " + res.error); }
                 }
             });
         }
@@ -227,7 +246,6 @@
             }
         }
 
-        // --- ОБНОВЛЕННЫЙ МАРКЕТ С КНОПКОЙ "СНЯТЬ" ---
         async function loadMarket() {
             const items = await api('/get_market');
             const container = document.getElementById('market-items');
@@ -315,11 +333,10 @@
             `).join('');
         }
 
+        // Запуск системы
+        setInterval(checkNotifications, 15000);
+        checkNotifications();
         sync();
     </script>
 </body>
 </html>
-
-
-
-
