@@ -10,30 +10,29 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0b1120; color: white; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
-        .tab-content { display: none; height: calc(100vh - 100px); overflow-y: auto; padding: 20px 20px 160px 20px; }
-        #cases.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #market.active, #inventory.active { display: block; }
+        
+        /* Свайп-контейнер */
+        #main-slider { display: flex; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); height: 100%; width: 300%; }
+        .tab-content { width: 100vw; height: calc(100vh - 120px); overflow-y: auto; padding: 20px 20px 160px 20px; flex-shrink: 0; }
+        
+        #cases { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .nav-btn { transition: all 0.3s ease; position: relative; }
         #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); width: 90%; max-width: 400px; }
         #toast.show { top: 20px; }
-        #win-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 11000; align-items: center; justify-content: center; padding: 20px; }
+        
+        /* Модалки */
+        #win-modal, #notif-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 11000; align-items: center; justify-content: center; padding: 20px; }
+        #notif-modal { flex-direction: column; justify-content: start; padding-top: 60px; }
+
         #roulette-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; align-items: center; justify-content: center; }
         .roulette-window { position: relative; width: 100%; height: 140px; overflow: hidden; border-top: 2px solid #3b82f6; border-bottom: 2px solid #3b82f6; background: #111827; }
         .roulette-container { display: flex; position: absolute; left: 0; }
         .marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #f59e0b; z-index: 10; box-shadow: 0 0 15px #f59e0b; transform: translateX(-50%); }
         
-        /* Стиль для красной точки уведомления */
         .notification-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 12px;
-            height: 12px;
-            background: #ef4444;
-            border: 2px solid #1e293b;
-            border-radius: 50%;
-            display: none;
-            animation: pulse 2s infinite;
+            position: absolute; top: -2px; right: -2px; width: 12px; height: 12px;
+            background: #ef4444; border: 2px solid #1e293b; border-radius: 50%;
+            display: none; animation: pulse 2s infinite;
         }
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
@@ -61,6 +60,19 @@
         </div>
     </div>
 
+    <div id="notif-modal">
+        <div class="glass p-6 rounded-[35px] w-full max-w-sm flex flex-col h-[70vh] border border-blue-500/30 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black uppercase italic text-blue-400">События 🔔</h2>
+                <button onclick="closeNotif()" class="text-gray-400 text-2xl">&times;</button>
+            </div>
+            <div id="notif-list" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                <p class="text-center text-gray-500 py-10 italic">Уведомлений нет</p>
+            </div>
+            <button onclick="clearInternalNotifications()" class="mt-4 bg-white/5 py-3 rounded-xl text-xs font-bold uppercase text-gray-400">Очистить всё</button>
+        </div>
+    </div>
+
     <div id="roulette-overlay">
         <div class="text-center w-full">
             <h2 class="mb-6 text-xl font-bold text-blue-400 uppercase tracking-widest">Генерация NFT...</h2>
@@ -71,7 +83,7 @@
         </div>
     </div>
 
-    <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2 shadow-xl shrink-0">
+    <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2 shadow-xl shrink-0 z-10">
         <div class="flex items-center gap-3">
             <img id="u-pic-img" src="" class="w-10 h-10 rounded-full border-2 border-blue-500 hidden">
             <div id="u-pic-placeholder" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg uppercase">?</div>
@@ -85,31 +97,34 @@
         </div>
     </div>
 
-    <div class="flex-1 overflow-hidden relative">
-        <div id="cases" class="tab-content active">
-            <div onclick="startSpin()" class="glass p-10 rounded-[50px] border-b-[10px] border-blue-600 active:translate-y-1 active:border-b-[4px] transition-all text-center w-full max-w-xs shadow-2xl">
-                <div class="text-8xl mb-4">📦</div>
-                <h3 class="text-2xl font-black uppercase italic">Cyber Case</h3>
-                <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg mt-6"><span id="case-cost-display">100</span> 💎</div>
+    <div class="flex-1 overflow-hidden">
+        <div id="main-slider">
+            <div id="cases" class="tab-content">
+                <div onclick="startSpin()" class="glass p-10 rounded-[50px] border-b-[10px] border-blue-600 active:translate-y-1 active:border-b-[4px] transition-all text-center w-full max-w-xs shadow-2xl">
+                    <div class="text-8xl mb-4">📦</div>
+                    <h3 class="text-2xl font-black uppercase italic">Cyber Case</h3>
+                    <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg mt-6"><span id="case-cost-display">100</span> 💎</div>
+                </div>
             </div>
-        </div>
 
-        <div id="market" class="tab-content">
-            <h2 class="text-xl font-black mb-4 uppercase italic text-blue-400">🛒 Маркетплейс</h2>
-            <div id="market-grid" class="flex flex-col gap-2"></div>
-        </div>
+            <div id="market" class="tab-content">
+                <h2 class="text-xl font-black mb-4 uppercase italic text-blue-400">🛒 Маркетплейс</h2>
+                <div id="market-grid" class="flex flex-col gap-2"></div>
+            </div>
 
-        <div id="inventory" class="tab-content">
-            <h2 class="text-xl font-black mb-4 uppercase italic text-blue-400">🎒 Твои активы</h2>
-            <div id="inv-grid" class="grid grid-cols-2 gap-3"></div>
+            <div id="inventory" class="tab-content">
+                <h2 class="text-xl font-black mb-4 uppercase italic text-blue-400">🎒 Твои активы</h2>
+                <div id="inv-grid" class="grid grid-cols-2 gap-3"></div>
+            </div>
         </div>
     </div>
 
     <div id="nav-bar" class="fixed bottom-6 left-6 right-6 h-20 glass rounded-[35px] flex justify-around items-center z-50 px-4 shadow-2xl">
-        <button onclick="showTab('cases', this)" class="nav-btn text-3xl opacity-100">📦</button>
-        <button onclick="showTab('market', this)" class="nav-btn text-3xl opacity-40">🛒</button>
-        <button onclick="showTab('inventory', this)" class="nav-btn text-3xl opacity-40">
-            🎒
+        <button onclick="goToTab(0)" id="btn-0" class="nav-btn text-3xl opacity-100">📦</button>
+        <button onclick="goToTab(1)" id="btn-1" class="nav-btn text-3xl opacity-40">🛒</button>
+        <button onclick="goToTab(2)" id="btn-2" class="nav-btn text-3xl opacity-40">🎒</button>
+        <button onclick="openNotif()" class="nav-btn text-3xl opacity-40 relative">
+            🔔
             <div id="notif-dot" class="notification-badge"></div>
         </button>
     </div>
@@ -117,92 +132,82 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
-
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", username: "player", photo_url: "" };
+        
         let isSpinning = false;
+        let currentTab = 0;
+        let startX = 0;
 
-        const fetchHeaders = {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true"
-        };
+        const fetchHeaders = { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" };
 
+        // Инициализация профиля
         document.getElementById('u-name').innerText = user.first_name || user.username;
         if (user.photo_url) {
             const img = document.getElementById('u-pic-img');
-            img.src = user.photo_url;
-            img.classList.remove('hidden');
+            img.src = user.photo_url; img.classList.remove('hidden');
             document.getElementById('u-pic-placeholder').classList.add('hidden');
-        } else {
-            document.getElementById('u-pic-placeholder').innerText = (user.first_name || "U")[0].toUpperCase();
         }
 
-        function showToast(msg, icon = '✨') {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').innerText = icon;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 4000);
-        }
-
-        function showTab(tabId, btn) {
+        // --- ЛОГИКА ТАБОВ И СВАЙПА ---
+        function goToTab(index) {
             if (isSpinning) return;
-            tg.HapticFeedback.impactOccurred('light');
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            document.querySelectorAll('.nav-btn').forEach(b => b.style.opacity = "0.4");
-            if(btn) btn.style.opacity = "1";
+            currentTab = index;
+            const slider = document.getElementById('main-slider');
+            slider.style.transform = `translateX(-${index * 100}vw)`;
             
-            if(tabId === 'inventory') {
-                sync();
-                clearInternalNotifications(); // Убираем точку при заходе в инвентарь
-            }
-            if(tabId === 'market') loadMarket();
+            // Обновление кнопок
+            [0,1,2].forEach(i => {
+                document.getElementById(`btn-${i}`).style.opacity = (i === index) ? "1" : "0.4";
+            });
+
+            if (index === 1) loadMarket();
+            if (index === 2) sync();
+            tg.HapticFeedback.impactOccurred('light');
         }
 
-        async function sync() {
+        // Обработка свайпов
+        document.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+        document.addEventListener('touchend', e => {
+            if (isSpinning) return;
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+            if (Math.abs(diff) > 100) {
+                if (diff > 0 && currentTab < 2) goToTab(currentTab + 1);
+                else if (diff < 0 && currentTab > 0) goToTab(currentTab - 1);
+            }
+        });
+
+        // --- УВЕДОМЛЕНИЯ ---
+        function openNotif() {
+            document.getElementById('notif-modal').style.display = 'flex';
+            loadNotifications();
+        }
+        function closeNotif() { document.getElementById('notif-modal').style.display = 'none'; }
+
+        async function loadNotifications() {
+            const list = document.getElementById('notif-list');
             try {
-                const name = encodeURIComponent(user.first_name || user.username);
-                const photo = encodeURIComponent(user.photo_url || "");
-                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`, {
-                    headers: fetchHeaders
-                });
-                if (!res.ok) throw new Error();
-                const d = await res.json();
-                document.getElementById('balance').innerText = d.balance + " 💎";
-                const grid = document.getElementById('inv-grid');
-                if(!d.inventory || d.inventory.length === 0) {
-                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Тут пока пусто...</p>';
-                } else {
-                    grid.innerHTML = d.inventory.map(item => `
-                        <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
-                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
-                            <p class="text-[10px] font-black truncate uppercase mb-3 text-blue-300">${item}</p>
-                            <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">На маркет</button>
+                const res = await fetch(`${SERVER_URL}/get_notifications?user_id=${user.id}`, { headers: fetchHeaders });
+                const data = await res.json();
+                if (data.length > 0) {
+                    list.innerHTML = data.map(n => `
+                        <div class="bg-white/5 p-3 rounded-xl border-l-2 border-blue-500">
+                            <p class="text-[11px] leading-tight">${n.message}</p>
                         </div>
                     `).join('');
                 }
-            } catch(e) { document.getElementById('balance').innerText = "OFFLINE"; }
+            } catch(e) {}
         }
 
-        // --- ЛОГИКА УВЕДОМЛЕНИЙ В ИГРЕ ---
         async function checkNotifications() {
             try {
                 const res = await fetch(`${SERVER_URL}/get_notifications?user_id=${user.id}`, { headers: fetchHeaders });
                 const notifications = await res.json();
-                
-                if (notifications && notifications.length > 0) {
-                    // Показываем красную точку
+                if (notifications.length > 0) {
                     document.getElementById('notif-dot').style.display = 'block';
-                    
-                    // Показываем последний текст в Toast
-                    notifications.forEach(n => {
-                        showToast(n.message, "💰");
-                        tg.HapticFeedback.notificationOccurred('success');
-                    });
                 }
-            } catch(e) { console.error("Ошибка проверки уведомлений", e); }
+            } catch(e) {}
         }
 
         async function clearInternalNotifications() {
@@ -213,13 +218,39 @@
                     headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id})
                 });
+                document.getElementById('notif-list').innerHTML = '<p class="text-center text-gray-500 py-10 italic">Уведомлений нет</p>';
             } catch(e) {}
         }
 
-        // Запуск проверки каждые 15 секунд
-        setInterval(checkNotifications, 15000);
-        // Первичная проверка при запуске
-        checkNotifications();
+        // --- ОСТАЛЬНАЯ ЛОГИКА (СИНХРОНИЗАЦИЯ, РУЛЕТКА, МАРКЕТ) ---
+        function showToast(msg, icon = '✨') {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        async function sync() {
+            try {
+                const name = encodeURIComponent(user.first_name || user.username);
+                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}`, { headers: fetchHeaders });
+                const d = await res.json();
+                document.getElementById('balance').innerText = d.balance + " 💎";
+                const grid = document.getElementById('inv-grid');
+                if(!d.inventory || d.inventory.length === 0) {
+                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Пусто</p>';
+                } else {
+                    grid.innerHTML = d.inventory.map(item => `
+                        <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
+                            <p class="text-[10px] font-black truncate uppercase mb-3 text-blue-300">${item}</p>
+                            <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">Продать</button>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) { document.getElementById('balance').innerText = "OFFLINE"; }
+        }
 
         async function startSpin() {
             if (isSpinning) return;
@@ -236,9 +267,7 @@
                 const overlay = document.getElementById('roulette-overlay');
                 const list = document.getElementById('roulette-list');
                 overlay.style.display = 'flex';
-                list.innerHTML = '';
-                list.style.transition = 'none';
-                list.style.transform = 'translateX(0)';
+                list.innerHTML = ''; list.style.transition = 'none'; list.style.transform = 'translateX(0)';
                 
                 const pool = ["Neon NFT", "Gold NFT", "Cyber Sword", "Void Armor", "Ice Ring", "Flame Wings"];
                 for(let i=0; i<60; i++) {
@@ -273,21 +302,14 @@
         function closeWinModal() { document.getElementById('win-modal').style.display = 'none'; isSpinning = false; sync(); }
 
         async function quickSell(item) {
-    try {
-        const res = await fetch(`${SERVER_URL}/sell_instantly`, {
-            method: 'POST',
-            headers: fetchHeaders,
-            body: JSON.stringify({user_id: user.id, item_name: item})
-        });
-        const d = await res.json();
-        if(d.success) { 
-            showToast(`Продано за ${document.getElementById('sell-price').innerText} 💎`, "💰");
-            closeWinModal(); // Эта функция вызывает sync(), который обновит инвентарь
+            try {
+                const res = await fetch(`${SERVER_URL}/sell_instantly`, {
+                    method: 'POST', headers: fetchHeaders,
+                    body: JSON.stringify({user_id: user.id, item_name: item})
+                });
+                if((await res.json()).success) { showToast("Продано!", "💰"); closeWinModal(); }
+            } catch(e) {}
         }
-    } catch(e) {
-        showToast("Ошибка при продаже", "❌");
-    }
-}
 
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
@@ -295,40 +317,34 @@
                 const r = await fetch(`${SERVER_URL}/get_market`, { headers: fetchHeaders });
                 const items = await r.json();
                 if(!items || items.length === 0) {
-                    grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
+                    grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пусто</p>';
                     return;
                 }
                 grid.innerHTML = items.map(i => {
                     const isMine = Number(i.seller_id) === Number(user.id);
-                    const displayName = i.username || "Игрок";
-                    const sellerImg = i.photo_url && i.photo_url !== "" ? i.photo_url : `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
                     return `
-                        <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 ${isMine ? 'border-blue-500' : 'border-yellow-500'} mb-2">
+                        <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 ${isMine ? 'border-blue-500' : 'border-yellow-500'}">
                             <div class="flex items-center gap-3">
-                                <div class="relative">
-                                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
-                                    <img src="${sellerImg}" class="w-5 h-5 rounded-full absolute -bottom-1 -right-1 border border-[#0b1120] shadow-md object-cover">
-                                </div>
+                                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-10 h-10">
                                 <div>
                                     <p class="font-black text-[10px] uppercase">${i.item_name}</p>
-                                    <p class="text-[8px] text-blue-400 font-bold italic">@${displayName} ${isMine ? '(Вы)' : ''}</p>
+                                    <p class="text-[8px] text-blue-400">@${i.username || 'Игрок'}</p>
                                 </div>
                             </div>
                             ${isMine ? 
-                                `<button onclick="cancelLot(${i.lot_id})" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-2xl font-black text-[10px] uppercase">Снять</button>` : 
-                                `<button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs">${i.price} 💎</button>`
+                                `<button onclick="cancelLot(${i.lot_id})" class="text-red-500 text-[10px] font-bold">СНЯТЬ</button>` : 
+                                `<button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-4 py-2 rounded-xl font-bold text-xs">${i.price} 💎</button>`
                             }
                         </div>
                     `;
                 }).join('');
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         }
 
         async function buyItem(id) {
             try {
                 const res = await fetch(`${SERVER_URL}/buy_from_market`, {
-                    method: 'POST',
-                    headers: fetchHeaders,
+                    method: 'POST', headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id, lot_id: id})
                 });
                 const data = await res.json();
@@ -337,42 +353,21 @@
             } catch(e) {}
         }
 
-        async function cancelLot(id) {
+        async function sellItem(name) {
+            const price = prompt("Цена продажи:", "150");
+            if(!price || isNaN(price)) return;
             try {
-                const res = await fetch(`${SERVER_URL}/cancel_lot`, {
-                    method: 'POST',
-                    headers: fetchHeaders,
-                    body: JSON.stringify({user_id: user.id, lot_id: id})
+                const res = await fetch(`${SERVER_URL}/list_on_market`, {
+                    method: 'POST', headers: fetchHeaders,
+                    body: JSON.stringify({user_id: user.id, item_name: name, price: parseInt(price)})
                 });
-                const d = await res.json();
-                if(d.success) { showToast("Возвращено!", "🎒"); loadMarket(); sync(); }
+                if((await res.json()).success) { showToast("Выставлено!", "✅"); sync(); }
             } catch(e) {}
         }
 
-        async function sellItem(name) {
-            const price = prompt("Введите цену продажи (💎):", "150");
-            if(!price || isNaN(price) || parseInt(price) <= 0) return;
-            try {
-                const res = await fetch(`${SERVER_URL}/list_on_market`, {
-                    method: 'POST',
-                    headers: fetchHeaders,
-                    body: JSON.stringify({user_id: user.id, item_name: name, price: parseInt(price)})
-                });
-                const d = await res.json();
-                if(d.success) { 
-                    showToast("Выставлено!", "✅"); 
-                    sync();
-                    loadMarket();
-                } else {
-                    showToast(d.error || "Ошибка", "❌");
-                }
-            } catch(e) { showToast("Ошибка связи", "❌"); }
-        }
-
         sync();
-        setInterval(sync, 10000); 
+        checkNotifications();
+        setInterval(checkNotifications, 15000);
     </script>
 </body>
 </html>
-
-
