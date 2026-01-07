@@ -51,17 +51,26 @@
         </div>
     </div>
 
-    <div class="p-4 flex justify-between items-center glass m-4 rounded-3xl z-50">
+ <div class="p-4 flex justify-between items-center glass m-4 rounded-3xl z-50">
         <div class="flex items-center gap-3">
             <img id="u-pic" class="w-10 h-10 rounded-full border-2 border-blue-500 hidden">
-            <div id="u-no-pic" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold text-xs">?</div>
+            <div id="u-no-pic" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold text-xs shadow-lg">?</div>
             <div>
                 <p id="u-name" class="font-bold text-sm leading-none">Загрузка...</p>
                 <p class="text-[9px] text-blue-400 font-bold uppercase mt-1">Elite Member</p>
             </div>
         </div>
-        <div class="text-right">
-            <p id="balance" class="text-yellow-400 font-black text-xl">0 💎</p>
+        
+        <div class="flex items-center gap-4">
+            <div class="relative active:scale-90 transition-all cursor-pointer" onclick="tg.showAlert('У вас пока нет новых уведомлений')">
+                <span class="text-xl">🔔</span>
+                <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120] animate-ping"></span>
+                <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120]"></span>
+            </div>
+            
+            <div class="text-right">
+                <p id="balance" class="text-yellow-400 font-black text-xl drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">0 💎</p>
+            </div>
         </div>
     </div>
 
@@ -308,5 +317,6 @@
     </script>
 </body>
 </html>
+
 
 
