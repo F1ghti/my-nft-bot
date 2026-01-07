@@ -9,42 +9,18 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0b1120; color: white; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-        
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
-        
-        /* Исправленные вкладки: используем flex только когда нужно центрировать кейс */
-        .tab-content { 
-            display: none; 
-            height: calc(100vh - 100px); 
-            overflow-y: auto; 
-            padding: 20px 20px 160px 20px; /* Огромный отступ снизу, чтобы меню ничего не закрывало */
-        }
-        
-        /* Кейсы центрируем */
+        .tab-content { display: none; height: calc(100vh - 100px); overflow-y: auto; padding: 20px 20px 160px 20px; }
         #cases.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        /* Остальные вкладки — обычный поток */
         #market.active, #inventory.active { display: block; }
-
         .nav-btn { transition: all 0.3s ease; }
-
-        #toast { 
-            position: fixed; top: -100px; left: 50%; transform: translateX(-50%); 
-            z-index: 10000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
-        }
+        #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #toast.show { top: 20px; }
-
-        #win-modal { 
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
-            z-index: 11000; align-items: center; justify-content: center; padding: 20px;
-        }
-        
+        #win-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 11000; align-items: center; justify-content: center; padding: 20px; }
         #roulette-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; align-items: center; justify-content: center; }
         .roulette-window { position: relative; width: 100%; height: 140px; overflow: hidden; border-top: 2px solid #3b82f6; border-bottom: 2px solid #3b82f6; background: #111827; }
-        .roulette-container { display: flex; position: absolute; left: 0; will-change: transform; }
+        .roulette-container { display: flex; position: absolute; left: 0; }
         .marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #f59e0b; z-index: 10; box-shadow: 0 0 15px #f59e0b; transform: translateX(-50%); }
-        
-        .balance-update { animation: pulse 0.5s ease-in-out; }
-        @keyframes pulse { 0% { color: #facc15; } 50% { transform: scale(1.1); color: #fff; } 100% { color: #facc15; } }
     </style>
 </head>
 <body class="h-screen flex flex-col p-2">
@@ -85,18 +61,16 @@
             </div>
         </div>
         <div class="text-right">
-            <p id="balance" class="text-yellow-400 font-black text-xl transition-all">0 💎</p>
+            <p id="balance" class="text-yellow-400 font-black text-xl">0 💎</p>
         </div>
     </div>
 
     <div class="flex-1 overflow-hidden relative">
-        
         <div id="cases" class="tab-content active">
             <div onclick="startSpin()" class="glass p-10 rounded-[50px] border-b-[10px] border-blue-600 active:translate-y-1 active:border-b-[4px] transition-all text-center w-full max-w-xs shadow-2xl">
                 <div class="text-8xl mb-4">📦</div>
                 <h3 class="text-2xl font-black uppercase italic">Cyber Case</h3>
-                <p class="text-gray-400 text-sm mb-6">Гарантированный NFT</p>
-                <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg"><span id="case-cost-display">100</span> 💎</div>
+                <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg mt-6"><span id="case-cost-display">100</span> 💎</div>
             </div>
         </div>
 
@@ -120,15 +94,12 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
-        const CASE_COST = 100;
         const user = tg.initDataUnsafe.user || { id: 123, first_name: "Игрок" };
         let isSpinning = false;
 
         document.getElementById('u-name').innerText = user.first_name;
         document.getElementById('u-pic').innerText = user.first_name[0];
-        document.getElementById('case-cost-display').innerText = CASE_COST;
 
         function showToast(msg, icon = '✨') {
             const t = document.getElementById('toast');
@@ -138,24 +109,13 @@
             setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ
         function showTab(tabId, btn) {
             if (isSpinning) return;
             tg.HapticFeedback.impactOccurred('light');
-
-            // 1. Скрываем все вкладки физически
-            document.querySelectorAll('.tab-content').forEach(t => {
-                t.classList.remove('active');
-            });
-
-            // 2. Показываем нужную
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-
-            // 3. Обновляем кнопки
             document.querySelectorAll('.nav-btn').forEach(b => b.style.opacity = "0.4");
             if(btn) btn.style.opacity = "1";
-
-            // 4. Грузим данные
             if(tabId === 'inventory') sync();
             if(tabId === 'market') loadMarket();
         }
@@ -164,9 +124,7 @@
             try {
                 const r = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}`);
                 const d = await r.json();
-                const balEl = document.getElementById('balance');
-                balEl.innerText = d.balance + " 💎";
-                
+                document.getElementById('balance').innerText = d.balance + " 💎";
                 const grid = document.getElementById('inv-grid');
                 if(!d.inventory || d.inventory.length === 0) {
                     grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Тут пока пусто...</p>';
@@ -179,7 +137,7 @@
                         <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">Продать</button>
                     </div>
                 `).join('');
-            } catch(e) { }
+            } catch(e) {}
         }
 
         async function startSpin() {
@@ -192,59 +150,41 @@
                 });
                 const data = await res.json();
                 if(data.error) return showToast("Не хватает 💎", "❌");
-
                 isSpinning = true;
                 const overlay = document.getElementById('roulette-overlay');
                 const list = document.getElementById('roulette-list');
-
                 overlay.style.display = 'flex';
                 list.innerHTML = '';
                 list.style.transition = 'none';
                 list.style.transform = 'translateX(0)';
-
                 const pool = ["Neon NFT", "Gold NFT", "Cyber Sword", "Void Armor", "Ice Ring", "Flame Wings"];
                 for(let i=0; i<60; i++) {
                     const name = i === 50 ? data.item : pool[Math.floor(Math.random()*pool.length)];
                     list.innerHTML += `<div class="min-w-[110px] h-[120px] m-[5px] glass rounded-2xl flex items-center justify-center shrink-0"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-16 h-16"></div>`;
                 }
-
                 setTimeout(() => {
                     list.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.05, 1)';
                     const stopPos = (50 * 120) - (window.innerWidth / 2) + 60;
                     list.style.transform = `translateX(-${stopPos}px)`;
                 }, 50);
-
                 setTimeout(() => {
-                    tg.HapticFeedback.notificationOccurred('success');
                     overlay.style.display = 'none';
                     showWinModal(data.item);
                 }, 4600);
-            } catch(e) { showToast("Ошибка связи", "❗"); isSpinning = false; }
+            } catch(e) { isSpinning = false; }
         }
 
         function showWinModal(item) {
             const modal = document.getElementById('win-modal');
-            const imgDiv = document.getElementById('win-item-img');
-            const nameText = document.getElementById('win-item-name');
-            const sellPriceSpan = document.getElementById('sell-price');
-            
+            document.getElementById('win-item-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-32 h-32 mx-auto drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]">`;
+            document.getElementById('win-item-name').innerText = item;
             const basePrices = {"Neon NFT": 50, "Gold NFT": 150, "Cyber Sword": 80, "Void Armor": 200, "Flame Wings": 300, "Ice Ring": 100};
-            const sPrice = Math.floor((basePrices[item] || 50) * 0.8);
-
-            imgDiv.innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-32 h-32 mx-auto drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]">`;
-            nameText.innerText = item;
-            sellPriceSpan.innerText = sPrice;
-            
+            document.getElementById('sell-price').innerText = Math.floor((basePrices[item] || 50) * 0.8);
             document.getElementById('quick-sell-btn').onclick = () => quickSell(item);
             modal.style.display = 'flex';
         }
 
-        function closeWinModal() {
-            document.getElementById('win-modal').style.display = 'none';
-            isSpinning = false;
-            showToast("Предмет сохранен!", "🎒");
-            sync();
-        }
+        function closeWinModal() { document.getElementById('win-modal').style.display = 'none'; isSpinning = false; sync(); }
 
         async function quickSell(item) {
             try {
@@ -253,16 +193,11 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({user_id: user.id, item_name: item})
                 });
-                const d = await res.json();
-                if(d.success) {
-                    showToast(`Продано за +${d.new_balance} 💎`, "💰");
-                    document.getElementById('win-modal').style.display = 'none';
-                    isSpinning = false;
-                    sync();
-                }
-            } catch(e) { showToast("Ошибка", "❗"); }
+                if((await res.json()).success) { closeWinModal(); showToast("Продано!", "💰"); }
+            } catch(e) {}
         }
 
+        // ОБНОВЛЕННЫЙ МАРКЕТ
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
             try {
@@ -272,16 +207,25 @@
                     grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
                     return;
                 }
-                grid.innerHTML = items.map(i => `
-                    <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 border-yellow-500 mb-2">
-                        <div class="flex items-center gap-3">
-                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
-                            <p class="font-black text-[10px] uppercase">${i.item_name}</p>
+                grid.innerHTML = items.map(i => {
+                    const isMine = i.seller_id === user.id;
+                    return `
+                        <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 ${isMine ? 'border-blue-500' : 'border-yellow-500'} mb-2">
+                            <div class="flex items-center gap-3">
+                                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
+                                <div>
+                                    <p class="font-black text-[10px] uppercase">${i.item_name}</p>
+                                    <p class="text-[7px] text-gray-500 uppercase tracking-tighter">${isMine ? '🌟 Твой лот' : '👤 Игрок: ' + i.seller_id}</p>
+                                </div>
+                            </div>
+                            ${isMine ? 
+                                `<button onclick="cancelLot(${i.lot_id})" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-2xl font-black text-[10px] uppercase active:scale-90 transition-all">Снять</button>` : 
+                                `<button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs active:scale-90 transition-all">${i.price} 💎</button>`
+                            }
                         </div>
-                        <button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs active:scale-90 transition-all">${i.price} 💎</button>
-                    </div>
-                `).join('');
-            } catch(e) { }
+                    `;
+                }).join('');
+            } catch(e) {}
         }
 
         async function buyItem(id) {
@@ -292,15 +236,25 @@
                     body: JSON.stringify({user_id: user.id, lot_id: id})
                 });
                 const data = await res.json();
-                if(data.success) {
-                    showToast("Успешная покупка!", "🛒");
-                    loadMarket(); sync();
-                } else { showToast(data.error, "❌"); }
-            } catch(e) { }
+                if(data.success) { showToast("Куплено!", "🛒"); loadMarket(); sync(); }
+                else showToast(data.error, "❌");
+            } catch(e) {}
+        }
+
+        async function cancelLot(id) {
+            if(!confirm("Снять с продажи?")) return;
+            try {
+                const res = await fetch(`${SERVER_URL}/cancel_lot`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: user.id, lot_id: id})
+                });
+                if((await res.json()).success) { showToast("Возвращено!", "🎒"); loadMarket(); sync(); }
+            } catch(e) {}
         }
 
         async function sellItem(name) {
-            const price = prompt("Введите стоимость продажи (💎):", "150");
+            const price = prompt("Цена (💎):", "150");
             if(!price || isNaN(price)) return;
             try {
                 const res = await fetch(`${SERVER_URL}/list_on_market`, {
@@ -308,12 +262,8 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({user_id: user.id, item_name: name, price: parseInt(price)})
                 });
-                const data = await res.json();
-                if(data.success) {
-                    showToast("Выставлено на продажу!", "✅");
-                    sync();
-                }
-            } catch(e) { }
+                if((await res.json()).success) { showToast("Выставлено!", "✅"); sync(); }
+            } catch(e) {}
         }
 
         sync();
