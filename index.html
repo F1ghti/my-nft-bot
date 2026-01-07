@@ -116,7 +116,6 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         
-        // ВАЖНО: Проверь, что этот URL совпадает с тем, что выдал ngrok!
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
@@ -131,10 +130,8 @@
             } catch(e) { console.error("API Error:", e); return {success: false}; }
         }
 
-        // НОВАЯ ФУНКЦИЯ УПРАВЛЕНИЯ ПРЕДМЕТОМ
         function openItemMenu(name) {
             tg.HapticFeedback.impactOccurred('medium');
-            
             tg.showPopup({
                 title: 'Управление NFT',
                 message: `Что вы хотите сделать с ${name}?`,
@@ -146,14 +143,10 @@
             }, async (btnId) => {
                 if (btnId === 'to_bot') {
                     const res = await api('/sell_instantly', {user_id: user.id, item_name: name});
-                    if(res.success) {
-                        tg.showAlert("✅ Продано боту!");
-                        sync();
-                    }
+                    if(res.success) { tg.showAlert("✅ Продано!"); sync(); }
                 } else if (btnId === 'to_market') {
-                    // Используем setTimeout, чтобы prompt не конфликтовал с закрытием popup
                     setTimeout(() => {
-                        const price = prompt(`Введите цену (💎) за которую хотите продать ${name}:`, "200");
+                        const price = prompt(`Введите цену (💎) за ${name}:`, "200");
                         if (price && !isNaN(price) && parseInt(price) > 0) {
                             processMarketListing(name, parseInt(price));
                         }
@@ -165,23 +158,34 @@
         async function processMarketListing(name, price) {
             const res = await api('/list_on_market', {user_id: user.id, item_name: name, price: price});
             if(res.success) {
-                tg.showAlert(`🚀 Предмет ${name} выставлен на маркет за ${price} 💎`);
+                tg.showAlert(`🚀 Выставлено за ${price} 💎`);
                 sync();
-            } else {
-                tg.showAlert("❌ Ошибка при выставлении на маркет");
             }
         }
 
         async function buyItem(lotId, price) {
-            tg.showConfirm(`Купить этот предмет за ${price} 💎?`, async (yes) => {
+            tg.showConfirm(`Купить за ${price} 💎?`, async (yes) => {
                 if (yes) {
                     const res = await api('/buy_item', {user_id: user.id, lot_id: lotId});
                     if(res.success) {
-                        tg.showAlert("🎉 Поздравляем! Предмет куплен и добавлен в рюкзак.");
-                        sync();
+                        tg.showAlert("🎉 Куплено!");
+                        sync(); loadMarket();
+                    } else { tg.showAlert("❌ " + res.error); }
+                }
+            });
+        }
+
+        // --- НОВАЯ ФУНКЦИЯ ДЛЯ ОТМЕНЫ ЛОТА ---
+        async function cancelLot(lotId) {
+            tg.showConfirm("Снять предмет с продажи?", async (yes) => {
+                if (yes) {
+                    const res = await api('/cancel_lot', {user_id: user.id, lot_id: lotId});
+                    if (res.success) {
+                        tg.showAlert("Предмет возвращен в рюкзак");
                         loadMarket();
+                        sync();
                     } else {
-                        tg.showAlert("❌ " + (res.error || "Ошибка покупки"));
+                        tg.showAlert("Ошибка: " + res.error);
                     }
                 }
             });
@@ -194,8 +198,7 @@
             
             if(user.photo_url) {
                 const pic = document.getElementById('u-pic');
-                pic.src = user.photo_url;
-                pic.classList.remove('hidden');
+                pic.src = user.photo_url; pic.classList.remove('hidden');
                 document.getElementById('u-no-pic').classList.add('hidden');
             }
 
@@ -213,12 +216,13 @@
             }
         }
 
+        // --- ОБНОВЛЕННЫЙ МАРКЕТ С КНОПКОЙ "СНЯТЬ" ---
         async function loadMarket() {
             const items = await api('/get_market');
             const container = document.getElementById('market-items');
             if(items.length > 0) {
                 container.innerHTML = items.map(i => `
-                    <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 ${i.seller_id == user.id ? 'border-blue-500' : 'border-yellow-500'}">
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 ${i.seller_id == user.id ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'border-yellow-500'}">
                         <div class="flex items-center gap-3">
                             <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-10 h-10">
                             <div>
@@ -226,10 +230,13 @@
                                 <p class="text-[8px] text-blue-400">${i.seller_id == user.id ? 'Ваш лот' : '@' + i.username}</p>
                             </div>
                         </div>
-                        ${i.seller_id != user.id ? 
-                            `<button onclick="buyItem(${i.lot_id}, ${i.price})" class="bg-yellow-500 text-black px-4 py-2 rounded-xl font-bold text-xs active:scale-95">${i.price} 💎</button>` : 
-                            `<span class="text-xs font-bold text-gray-400">${i.price} 💎</span>`
-                        }
+                        <div class="flex items-center gap-2">
+                            ${i.seller_id == user.id ? 
+                                `<button onclick="cancelLot(${i.lot_id})" class="bg-red-500/20 text-red-400 px-3 py-2 rounded-xl font-bold text-[10px] active:scale-95 border border-red-500/30">СНЯТЬ</button>` : 
+                                `<button onclick="buyItem(${i.lot_id}, ${i.price})" class="bg-yellow-500 text-black px-4 py-2 rounded-xl font-bold text-xs active:scale-95">${i.price} 💎</button>`
+                            }
+                            ${i.seller_id == user.id ? `<span class="text-xs font-bold text-gray-400 ml-1">${i.price} 💎</span>` : ''}
+                        </div>
                     </div>
                 `).join('');
             } else {
@@ -237,7 +244,6 @@
             }
         }
 
-        // --- Остальные функции (Spin, Preview, Tabs) ---
         async function showPreview() {
             const info = await api('/get_case_info');
             const list = document.getElementById('preview-list');
@@ -293,7 +299,7 @@
             document.getElementById('top-list').innerHTML = top.map((u, i) => `
                 <div class="glass p-4 rounded-2xl flex justify-between items-center">
                     <p class="text-sm font-bold">#${i+1} ${u.username}</p>
-                    <p class="text-yellow-400 font-black text-sm">${u.balance} 💎</p>
+                    <p class="text-yellow-400 font-black text-sm">${u.balance.toLocaleString()} 💎</p>
                 </div>
             `).join('');
         }
@@ -302,4 +308,5 @@
     </script>
 </body>
 </html>
+
 
