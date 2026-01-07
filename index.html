@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gift NFT Bot</title>
+    <title>NFT Universe</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -11,19 +11,18 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
         #main-slider { display: flex; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); width: 400%; height: calc(100vh - 180px); }
         .tab-content { width: 100vw; height: 100%; overflow-y: auto; padding: 20px; flex-shrink: 0; }
-        .nav-btn { opacity: 0.4; transition: 0.3s; }
+        .nav-btn { opacity: 0.4; transition: 0.3s; font-size: 24px; }
         .nav-btn.active { opacity: 1; filter: drop-shadow(0 0 8px #3b82f6); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 5000; align-items: center; justify-content: center; padding: 20px; }
     </style>
 </head>
 <body class="flex flex-col">
 
     <div class="p-4 flex justify-between items-center glass m-4 rounded-3xl z-50">
         <div class="flex items-center gap-3">
-            <div id="u-no-pic" class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold shadow-lg">?</div>
+            <div id="u-no-pic" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold shadow-lg">?</div>
             <div>
                 <p id="u-name" class="font-bold text-sm leading-none">Загрузка...</p>
-                <p class="text-[9px] text-blue-400 font-bold uppercase mt-1">Elite Member</p>
+                <p class="text-[9px] text-blue-400 font-bold uppercase mt-1">Platinum Member</p>
             </div>
         </div>
         <div class="text-right">
@@ -33,21 +32,28 @@
 
     <div id="main-slider">
         <div class="tab-content flex flex-col items-center justify-center text-center">
-            <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case" class="w-48 h-48 mb-6 drop-shadow-2xl">
-            <h2 class="text-3xl font-black uppercase italic">Cyber Case</h2>
-            <p class="text-gray-500 text-xs mb-8">НАЖМИ НА КЕЙС, ЧТОБЫ УВИДЕТЬ ДРОП</p>
-            <button onclick="startSpin()" class="bg-blue-600 px-16 py-5 rounded-[30px] text-2xl font-black active:scale-95 transition-all">100 💎</button>
+            <div class="relative mb-6">
+                <div class="absolute -inset-4 bg-blue-500/20 blur-2xl rounded-full"></div>
+                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-48 h-48 relative z-10">
+            </div>
+            <h2 class="text-3xl font-black uppercase italic tracking-tighter">Cyber Case</h2>
+            <p class="text-gray-500 text-xs mb-8 uppercase tracking-widest">Жми, чтобы открыть</p>
+            <button onclick="startSpin()" class="bg-blue-600 px-16 py-5 rounded-[30px] text-2xl font-black shadow-lg active:scale-95 transition-all">100 💎</button>
         </div>
-        <div class="tab-content"><h2>Маркетплейс (в разработке)</h2></div>
-        <div class="tab-content"><div id="inv-grid" class="grid grid-cols-2 gap-4"></div></div>
-        <div class="tab-content"><div id="top-list" class="space-y-3"></div></div>
+
+        <div class="tab-content"><h2>Магазин скоро...</h2></div>
+        <div class="tab-content">
+            <h2 class="text-xl font-bold mb-4">Твой инвентарь</h2>
+            <div id="inv-grid" class="grid grid-cols-2 gap-4"></div>
+        </div>
+        <div class="tab-content"><h2>Топ игроков скоро...</h2></div>
     </div>
 
     <div class="fixed bottom-6 left-6 right-6 h-20 glass rounded-[35px] flex justify-around items-center z-[1000]">
-        <button onclick="goToTab(0)" id="btn-0" class="nav-btn active text-2xl">📦</button>
-        <button onclick="goToTab(1)" id="btn-1" class="nav-btn text-2xl">🛒</button>
-        <button onclick="goToTab(2)" id="btn-2" class="nav-btn text-2xl">🎒</button>
-        <button onclick="goToTab(3)" id="btn-3" class="nav-btn text-2xl">🏆</button>
+        <button onclick="goToTab(0)" id="btn-0" class="nav-btn active">📦</button>
+        <button onclick="goToTab(1)" id="btn-1" class="nav-btn">🛒</button>
+        <button onclick="goToTab(2)" id="btn-2" class="nav-btn">🎒</button>
+        <button onclick="goToTab(3)" id="btn-3" class="nav-btn">🏆</button>
     </div>
 
     <script>
@@ -55,9 +61,9 @@
         tg.expand();
         tg.ready();
 
-        // ОБЯЗАТЕЛЬНО: Твоя ссылка ngrok
-        const SERVER_URL = "https://12eaff4f4782.ngrok-free.app";
-        const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок" };
+        // АВТО-ОПРЕДЕЛЕНИЕ: Берет адрес, на котором запущен файл
+        const SERVER_URL = window.location.origin;
+        const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
         async function api(path, body = null) {
             try {
@@ -65,16 +71,16 @@
                     method: body ? 'POST' : 'GET',
                     headers: {
                         "Content-Type": "application/json",
-                        "ngrok-skip-browser-warning": "69420" // МАГИЧЕСКИЙ ЗАГОЛОВОК ДЛЯ NGROK
+                        "ngrok-skip-browser-warning": "1" // Пропуск окна ngrok
                     }
                 };
                 if(body) opt.body = JSON.stringify(body);
                 
                 const res = await fetch(SERVER_URL + path, opt);
-                if (!res.ok) throw new Error();
+                if (!res.ok) throw new Error('Network error');
                 return await res.json();
             } catch(e) {
-                console.error(e);
+                console.error("API Error:", e);
                 return null;
             }
         }
@@ -85,12 +91,20 @@
                 document.getElementById('u-name').innerText = "Ошибка связи";
                 return;
             }
+
             document.getElementById('balance').innerText = (d.balance || 0).toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
             
             const grid = document.getElementById('inv-grid');
-            if(d.inventory) {
-                grid.innerHTML = d.inventory.map(i => `<div class="glass p-4 rounded-2xl text-center"><p class="text-xs font-bold">${i}</p></div>`).join('');
+            if(d.inventory && d.inventory.length > 0) {
+                grid.innerHTML = d.inventory.map(item => `
+                    <div class="glass p-4 rounded-2xl text-center">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-12 h-12 mx-auto mb-2">
+                        <p class="text-[10px] font-bold uppercase truncate">${item}</p>
+                    </div>
+                `).join('');
+            } else {
+                grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10">Инвентарь пуст</p>';
             }
         }
 
@@ -102,10 +116,13 @@
         async function startSpin() {
             const res = await api('/open_case', {user_id: user.id});
             if(!res || !res.success) return tg.showAlert(res ? res.error : "Ошибка сети");
-            tg.showAlert("Вы выиграли: " + res.item);
-            sync();
+            
+            tg.HapticFeedback.impactOccurred('heavy');
+            tg.showAlert("🎉 Вы выбили: " + res.item);
+            sync(); // Обновляем баланс и инвентарь
         }
 
+        // Запуск при загрузке
         window.onload = sync;
     </script>
 </body>
