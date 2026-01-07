@@ -354,11 +354,13 @@
         }
 
         // --- ЗАПУСК ---
+        // Запуск системы
         window.onload = () => {
-            sync();
-            checkBotUpdates(); // Проверяем новости при входе
-            setInterval(checkNotifications, 10000); // Проверяем покупки каждые 10 сек
+            sync(); // Синхронизация баланса
+            checkBotUpdates(); // ПРОВЕРКА НОВОСТЕЙ ПРИ ВХОДЕ
+            setInterval(checkNotifications, 10000); // Проверка покупок каждые 10 сек
         };
     </script>
 </body>
 </html>
+
