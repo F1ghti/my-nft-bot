@@ -105,12 +105,30 @@
         }
 
         function listOnMarket(itemName) {
-            tg.showPrompt(`Цена для ${itemName}:`, async (price) => {
-                if (!price || isNaN(price) || price <= 0) return;
-                const res = await api('/list_on_market', {user_id: user.id, item: itemName, price: parseInt(price)});
-                if(res && res.success) { tg.showAlert("Выставлено!"); sync(); }
-            });
+    // Эта функция вызывает стандартное окно Telegram
+    tg.showPrompt(`Введите цену для ${itemName}:`, async (price) => {
+        if (!price) return; // Если нажали "Отмена"
+        
+        const p = parseInt(price);
+        if (isNaN(p) || p <= 0) {
+            tg.showAlert("Введите число больше 0");
+            return;
         }
+
+        const res = await api('/list_on_market', {
+            user_id: user.id, 
+            item: itemName, 
+            price: p
+        });
+
+        if(res && res.success) {
+            tg.showAlert("Выставлено на рынок!");
+            sync(); // Обновляем баланс и инвентарь
+        } else {
+            tg.showAlert(res ? res.error : "Ошибка сервера");
+        }
+    });
+}
 
         async function buyItem(lotId) {
             const res = await api('/buy_from_market', {user_id: user.id, lot_id: lotId});
