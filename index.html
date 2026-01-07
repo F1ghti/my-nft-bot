@@ -70,9 +70,9 @@
                 const opt = {
                     method: body ? 'POST' : 'GET',
                     headers: {
-                        "Content-Type": "application/json",
-                        "ngrok-skip-browser-warning": "1" // Пропуск окна ngrok
-                    }
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true" 
+}
                 };
                 if(body) opt.body = JSON.stringify(body);
                 
@@ -127,3 +127,4 @@
     </script>
 </body>
 </html>
+
