@@ -211,39 +211,50 @@
         }
 
         async function loadMarket() {
-            const grid = document.getElementById('market-grid');
-            try {
-                const r = await fetch(`${SERVER_URL}/get_market`);
-                const items = await r.json();
-                if(items.length === 0) {
-                    grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
-                    return;
-                }
-                grid.innerHTML = items.map(i => {
-                    const isMine = Number(i.seller_id) === Number(user.id);
-                    const sellerImg = i.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${i.username}`;
-                    
-                    return `
-                        <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 ${isMine ? 'border-blue-500' : 'border-yellow-500'} mb-2">
-                            <div class="flex items-center gap-3">
-                                <div class="relative">
-                                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
-                                    <img src="${sellerImg}" class="w-5 h-5 rounded-full absolute -bottom-1 -right-1 border border-[#0b1120] shadow-sm">
-                                </div>
-                                <div>
-                                    <p class="font-black text-[10px] uppercase">${i.item_name}</p>
-                                    <p class="text-[8px] text-blue-400 font-bold italic">@${i.username} ${isMine ? '(Вы)' : ''}</p>
-                                </div>
-                            </div>
-                            ${isMine ? 
-                                `<button onclick="cancelLot(${i.lot_id})" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-2xl font-black text-[10px] uppercase active:scale-90 transition-all">Снять</button>` : 
-                                `<button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs active:scale-90 transition-all">${i.price} 💎</button>`
-                            }
-                        </div>
-                    `;
-                }).join('');
-            } catch(e) {}
+    const grid = document.getElementById('market-grid');
+    try {
+        const r = await fetch(`${SERVER_URL}/get_market`);
+        const items = await r.json();
+        
+        if (items.length === 0) {
+            grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
+            return;
         }
+
+        grid.innerHTML = items.map(i => {
+            const isMine = Number(i.seller_id) === Number(user.id);
+            
+            // ПРОВЕРКА: Если ника нет в базе, пишем "Игрок"
+            const displayName = i.username ? i.username : "Игрок";
+            
+            // ПРОВЕРКА: Если фото нет, генерируем аватарку по нику
+            const sellerImg = i.photo_url && i.photo_url !== "" 
+                ? i.photo_url 
+                : `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
+
+            return `
+                <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 ${isMine ? 'border-blue-500' : 'border-yellow-500'} mb-2">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
+                            <img src="${sellerImg}" class="w-5 h-5 rounded-full absolute -bottom-1 -right-1 border border-[#0b1120] shadow-md object-cover">
+                        </div>
+                        <div>
+                            <p class="font-black text-[10px] uppercase tracking-tight">${i.item_name}</p>
+                            <p class="text-[8px] text-blue-400 font-bold italic">@${displayName} ${isMine ? '<span class="text-white/50">(Вы)</span>' : ''}</p>
+                        </div>
+                    </div>
+                    ${isMine ? 
+                        `<button onclick="cancelLot(${i.lot_id})" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-2xl font-black text-[10px] uppercase active:scale-90 transition-all">Снять</button>` : 
+                        `<button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs active:scale-90 transition-all">${i.price} 💎</button>`
+                    }
+                </div>
+            `;
+        }).join('');
+    } catch(e) {
+        console.error("Ошибка загрузки маркета:", e);
+    }
+}
 
         async function buyItem(id) {
             tg.HapticFeedback.impactOccurred('medium');
@@ -288,3 +299,4 @@
     </script>
 </body>
 </html>
+
