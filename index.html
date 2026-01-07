@@ -96,13 +96,11 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // ССЫЛКА НА ТВОЙ NGROK (ОБЯЗАТЕЛЬНО ПРОБЕЛОВ БЫТЬ НЕ ДОЛЖНО)
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", username: "player", photo_url: "" };
         let isSpinning = false;
 
-        // Заголовки для обхода предупреждения ngrok
         const fetchHeaders = {
             "Content-Type": "application/json",
             "ngrok-skip-browser-warning": "true"
@@ -164,7 +162,6 @@
                 }
             } catch(e) {
                 document.getElementById('balance').innerText = "СЕРВЕР OFF";
-                console.error("Sync error:", e);
             }
         }
 
@@ -236,7 +233,7 @@
             try {
                 const r = await fetch(`${SERVER_URL}/get_market`, { headers: fetchHeaders });
                 const items = await r.json();
-                if(items.length === 0) {
+                if(!items || items.length === 0) {
                     grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
                     return;
                 }
@@ -263,7 +260,7 @@
                         </div>
                     `;
                 }).join('');
-            } catch(e) {}
+            } catch(e) { console.error(e); }
         }
 
         async function buyItem(id) {
@@ -301,8 +298,14 @@
                     body: JSON.stringify({user_id: user.id, item_name: name, price: parseInt(price)})
                 });
                 const d = await res.json();
-                if(d.success) { showToast("Выставлено!", "✅"); sync(); }
-            } catch(e) {}
+                if(d.success) { 
+                    showToast("Выставлено!", "✅"); 
+                    sync(); // Обновить инвентарь (вещь исчезнет)
+                    loadMarket(); // Фоново обновить маркет
+                } else {
+                    showToast(d.error || "Ошибка", "❌");
+                }
+            } catch(e) { showToast("Ошибка связи", "❌"); }
         }
 
         sync();
