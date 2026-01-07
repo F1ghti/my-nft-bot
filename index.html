@@ -69,7 +69,6 @@
                     <span class="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border border-[#0b1120]"></span>
                 </div>
             </div>
-            
             <div class="text-right">
                 <p id="balance" class="text-yellow-400 font-black text-xl drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">0 💎</p>
             </div>
@@ -92,9 +91,7 @@
         
         <div class="tab-content">
             <h2 class="text-2xl font-black mb-6 italic text-blue-400">🛒 МАРКЕТПЛЕЙС</h2>
-            <div id="market-items" class="space-y-3">
-                <p class="text-center text-gray-500 py-20 italic">На рынке пока пусто...</p>
-            </div>
+            <div id="market-items" class="space-y-3"></div>
         </div>
 
         <div class="tab-content">
@@ -127,6 +124,7 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         
+        // --- ЗАМЕНИ ЭТОТ АДРЕС НА СВОЙ NGROK ---
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
@@ -140,39 +138,45 @@
                 if(body) { opt.method = 'POST'; opt.body = JSON.stringify(body); }
                 const res = await fetch(SERVER_URL + path, opt);
                 return await res.json();
-            } catch(e) { console.error("API Error:", e); return {success: false}; }
+            } catch(e) { console.error("API Error:", e); return null; }
         }
 
-        // --- УВЕДОМЛЕНИЯ ---
-        async function checkNotifications() {
+        // --- НОВОЕ: ПРОВЕРКА ОБНОВЛЕНИЙ БОТА ---
+        async function checkBotUpdates() {
             try {
-                // Запрашиваем данные у сервера
-                const res = await fetch(`${SERVER_URL}/get_notifications?user_id=${user.id}`, {
-                    headers: { "ngrok-skip-browser-warning": "1" }
-                });
-                const notes = await res.json();
-                
-                console.log("Проверка уведомлений:", notes); // Это для отладки
+                const update = await api('/get_updates');
+                if (!update) return;
 
-                if (notes && notes.length > 0) {
-                    // Если пришло хоть одно уведомление
-                    lastNotification = notes.map(n => n.message).join("\n\n");
-                    
-                    // Показываем красную точку
-                    const dot = document.getElementById('notif-dot');
-                    if (dot) dot.classList.remove('hidden');
-                    
-                    // Вибрация
-                    tg.HapticFeedback.notificationOccurred('success');
+                // Сравниваем ID последнего обновления в памяти телефона с тем, что на сервере
+                const lastSeenUpdate = localStorage.getItem('last_bot_update_id');
+                
+                if (lastSeenUpdate !== String(update.id)) {
+                    // Показываем стандартное окно Telegram
+                    tg.showPopup({
+                        title: `🚀 ОБНОВЛЕНИЕ ${update.version}`,
+                        message: update.text,
+                        buttons: [{type: 'ok', text: 'Понятно'}]
+                    });
+                    // Запоминаем, что мы увидели это обновление
+                    localStorage.setItem('last_bot_update_id', update.id);
                 }
             } catch (e) {
-                console.error("Ошибка при получении уведомлений:", e);
+                console.error("Ошибка при получении новостей:", e);
             }
         }
-        
-        // Уменьшим интервал до 5 секунд для теста
-        setInterval(checkNotifications, 5000);
 
+        // --- УВЕДОМЛЕНИЯ О ПОКУПКАХ ---
+        async function checkNotifications() {
+            try {
+                const notes = await api(`/get_notifications?user_id=${user.id}`);
+                if (notes && notes.length > 0) {
+                    lastNotification = notes.map(n => n.message).join("\n\n");
+                    document.getElementById('notif-dot').classList.remove('hidden');
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            } catch (e) {}
+        }
+        
         function handleNotifClick() {
             if (lastNotification) {
                 tg.showAlert(lastNotification);
@@ -183,66 +187,11 @@
             }
         }
 
-        // --- ЛОГИКА ИНВЕНТАРЯ И МАРКЕТА ---
-        function openItemMenu(name) {
-            tg.HapticFeedback.impactOccurred('medium');
-            tg.showPopup({
-                title: 'Управление NFT',
-                message: `Что вы хотите сделать с ${name}?`,
-                buttons: [
-                    {id: 'to_market', type: 'default', text: 'Выставить на маркет'},
-                    {id: 'to_bot', type: 'destructive', text: 'Продать боту (быстро)'},
-                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
-                ]
-            }, async (btnId) => {
-                if (btnId === 'to_bot') {
-                    const res = await api('/sell_instantly', {user_id: user.id, item_name: name});
-                    if(res.success) { tg.showAlert("✅ Продано!"); sync(); }
-                } else if (btnId === 'to_market') {
-                    setTimeout(() => {
-                        const price = prompt(`Введите цену (💎) за ${name}:`, "200");
-                        if (price && !isNaN(price) && parseInt(price) > 0) {
-                            processMarketListing(name, parseInt(price));
-                        }
-                    }, 100);
-                }
-            });
-        }
-
-        async function processMarketListing(name, price) {
-            const res = await api('/list_on_market', {user_id: user.id, item_name: name, price: price});
-            if(res.success) {
-                tg.showAlert(`🚀 Выставлено за ${price} 💎`);
-                sync();
-            }
-        }
-
-        async function buyItem(lotId, price) {
-            tg.showConfirm(`Купить за ${price} 💎?`, async (yes) => {
-                if (yes) {
-                    const res = await api('/buy_item', {user_id: user.id, lot_id: lotId});
-                    if(res.success) {
-                        tg.showAlert("🎉 Куплено!");
-                        sync(); loadMarket();
-                    } else { tg.showAlert("❌ " + res.error); }
-                }
-            });
-        }
-
-        async function cancelLot(lotId) {
-            tg.showConfirm("Снять предмет с продажи?", async (yes) => {
-                if (yes) {
-                    const res = await api('/cancel_lot', {user_id: user.id, lot_id: lotId});
-                    if (res.success) {
-                        tg.showAlert("Предмет возвращен в рюкзак");
-                        loadMarket(); sync();
-                    } else { tg.showAlert("Ошибка: " + res.error); }
-                }
-            });
-        }
-
+        // --- СИНХРОНИЗАЦИЯ ДАННЫХ ---
         async function sync() {
             const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}&photo_url=${encodeURIComponent(user.photo_url || '')}`);
+            if(!d) return;
+
             document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
             
@@ -266,10 +215,13 @@
             }
         }
 
+        // Остальные функции (loadMarket, loadTop, startSpin, openItemMenu и т.д.) 
+        // остаются такими же, как были в твоем коде.
+
         async function loadMarket() {
             const items = await api('/get_market');
             const container = document.getElementById('market-items');
-            if(items.length > 0) {
+            if(items && items.length > 0) {
                 container.innerHTML = items.map(i => `
                     <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 ${i.seller_id == user.id ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'border-yellow-500'}">
                         <div class="flex items-center gap-3">
@@ -284,7 +236,6 @@
                                 `<button onclick="cancelLot(${i.lot_id})" class="bg-red-500/20 text-red-400 px-3 py-2 rounded-xl font-bold text-[10px] active:scale-95 border border-red-500/30">СНЯТЬ</button>` : 
                                 `<button onclick="buyItem(${i.lot_id}, ${i.price})" class="bg-yellow-500 text-black px-4 py-2 rounded-xl font-bold text-xs active:scale-95">${i.price} 💎</button>`
                             }
-                            ${i.seller_id == user.id ? `<span class="text-xs font-bold text-gray-400 ml-1">${i.price} 💎</span>` : ''}
                         </div>
                     </div>
                 `).join('');
@@ -293,28 +244,62 @@
             }
         }
 
-        async function showPreview() {
-            const info = await api('/get_case_info');
-            const list = document.getElementById('preview-list');
-            list.innerHTML = info.items.map(i => `
-                <div class="bg-white/5 p-3 rounded-2xl text-center border border-white/5">
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.name}" class="w-12 h-12 mx-auto mb-1">
-                    <p class="text-[8px] font-bold uppercase truncate">${i.name}</p>
-                </div>
-            `).join('');
-            document.getElementById('preview-modal').style.display = 'flex';
+        async function buyItem(lotId, price) {
+            tg.showConfirm(`Купить за ${price} 💎?`, async (yes) => {
+                if (yes) {
+                    const res = await api('/buy_item', {user_id: user.id, lot_id: lotId});
+                    if(res && res.success) {
+                        tg.showAlert("🎉 Куплено!");
+                        sync(); loadMarket();
+                    } else { tg.showAlert("❌ " + (res?.error || "Ошибка")); }
+                }
+            });
+        }
+
+        async function cancelLot(lotId) {
+            tg.showConfirm("Снять с продажи?", async (yes) => {
+                if (yes) {
+                    const res = await api('/cancel_lot', {user_id: user.id, lot_id: lotId});
+                    if (res && res.success) { loadMarket(); sync(); }
+                }
+            });
+        }
+
+        function openItemMenu(name) {
+            tg.showPopup({
+                title: 'NFT Меню',
+                message: `Что сделать с ${name}?`,
+                buttons: [
+                    {id: 'to_market', type: 'default', text: 'Продать игрокам'},
+                    {id: 'to_bot', type: 'destructive', text: 'Продать боту'},
+                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
+                ]
+            }, async (btnId) => {
+                if (btnId === 'to_bot') {
+                    const res = await api('/sell_instantly', {user_id: user.id, item_name: name});
+                    if(res?.success) sync();
+                } else if (btnId === 'to_market') {
+                    const price = prompt(`Цена за ${name}:`, "200");
+                    if (price && !isNaN(price)) {
+                        const res = await api('/list_on_market', {user_id: user.id, item_name: name, price: parseInt(price)});
+                        if(res?.success) sync();
+                    }
+                }
+            });
         }
 
         async function startSpin() {
             const res = await api('/open_case', {user_id: user.id});
-            if(!res.success) { return alert("Мало 💎"); }
+            if(!res || !res.success) { return tg.showAlert("Мало 💎"); }
             tg.HapticFeedback.impactOccurred('heavy');
+            
             const wrap = document.getElementById('roulette-wrap');
             const list = document.getElementById('roulette-list');
             wrap.style.display = 'flex';
             list.innerHTML = '';
             list.style.transition = 'none';
             list.style.transform = 'translateX(0)';
+            
             const info = await api('/get_case_info');
             const itemsPool = info.items.map(i => i.name);
             for(let i=0; i<50; i++) {
@@ -345,19 +330,35 @@
 
         async function loadTop() {
             const top = await api('/get_top');
-            document.getElementById('top-list').innerHTML = top.map((u, i) => `
-                <div class="glass p-4 rounded-2xl flex justify-between items-center">
-                    <p class="text-sm font-bold">#${i+1} ${u.username}</p>
-                    <p class="text-yellow-400 font-black text-sm">${u.balance.toLocaleString()} 💎</p>
-                </div>
-            `).join('');
+            if(top) {
+                document.getElementById('top-list').innerHTML = top.map((u, i) => `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center">
+                        <p class="text-sm font-bold">#${i+1} ${u.username}</p>
+                        <p class="text-yellow-400 font-black text-sm">${u.balance.toLocaleString()} 💎</p>
+                    </div>
+                `).join('');
+            }
         }
 
-        // Запуск системы
-        setInterval(checkNotifications, 15000);
-        checkNotifications();
-        sync();
+        async function showPreview() {
+            const info = await api('/get_case_info');
+            if(!info) return;
+            const list = document.getElementById('preview-list');
+            list.innerHTML = info.items.map(i => `
+                <div class="bg-white/5 p-3 rounded-2xl text-center border border-white/5">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.name}" class="w-12 h-12 mx-auto mb-1">
+                    <p class="text-[8px] font-bold uppercase truncate">${i.name}</p>
+                </div>
+            `).join('');
+            document.getElementById('preview-modal').style.display = 'flex';
+        }
+
+        // --- ЗАПУСК ---
+        window.onload = () => {
+            sync();
+            checkBotUpdates(); // Проверяем новости при входе
+            setInterval(checkNotifications, 10000); // Проверяем покупки каждые 10 сек
+        };
     </script>
 </body>
 </html>
-
