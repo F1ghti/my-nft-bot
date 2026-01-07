@@ -131,27 +131,37 @@
         }
 
         async function sync() {
-            try {
-                const name = encodeURIComponent(user.first_name || user.username);
-                const photo = encodeURIComponent(user.photo_url || "");
-                const r = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`);
-                const d = await r.json();
-                
-                document.getElementById('balance').innerText = d.balance + " 💎";
-                const grid = document.getElementById('inv-grid');
-                if(!d.inventory || d.inventory.length === 0) {
-                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Тут пока пусто...</p>';
-                    return;
-                }
-                grid.innerHTML = d.inventory.map(item => `
-                    <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
-                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
-                        <p class="text-[10px] font-black truncate uppercase mb-3 text-blue-300">${item}</p>
-                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">На маркет</button>
-                    </div>
-                `).join('');
-            } catch(e) {}
+    try {
+        const name = encodeURIComponent(user.first_name || user.username);
+        const photo = encodeURIComponent(user.photo_url || "");
+        
+        console.log("Пытаюсь соединиться с:", `${SERVER_URL}/get_user`); // Для отладки
+        
+        const r = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`);
+        if (!r.ok) throw new Error("Ошибка сервера");
+        
+        const d = await r.json();
+        
+        // Если связь есть, обновляем баланс из базы
+        document.getElementById('balance').innerText = d.balance + " 💎";
+        
+        const grid = document.getElementById('inv-grid');
+        if(!d.inventory || d.inventory.length === 0) {
+            grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Тут пока пусто...</p>';
+            return;
         }
+        grid.innerHTML = d.inventory.map(item => `
+            <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
+                <p class="text-[10px] font-black truncate uppercase mb-3 text-blue-300">${item}</p>
+                <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">На маркет</button>
+            </div>
+        `).join('');
+    } catch(e) {
+        console.error("Связь с сервером потеряна:", e);
+        showToast("Нет связи с сервером!", "❌");
+    }
+}
 
         async function startSpin() {
             if (isSpinning) return;
@@ -299,4 +309,5 @@
     </script>
 </body>
 </html>
+
 
