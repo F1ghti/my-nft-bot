@@ -14,13 +14,11 @@
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Стили рулетки */
+        /* Рулетка */
         #roulette-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
         .roulette-window { position: relative; width: 100%; height: 160px; overflow: hidden; border-top: 2px solid #3b82f6; border-bottom: 2px solid #3b82f6; background: #1e293b; }
         .roulette-container { display: flex; position: absolute; left: 0; transition: transform 4s cubic-bezier(0.15, 0, 0.05, 1); will-change: transform; }
         .marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #f59e0b; z-index: 10; box-shadow: 0 0 15px #f59e0b; transform: translateX(-50%); }
-
-        .rarity-legendary { background: linear-gradient(135deg, #f59e0b 0%, #78350f 100%) !important; box-shadow: 0 0 20px rgba(245,158,11,0.5); }
     </style>
 </head>
 <body class="h-screen flex flex-col">
@@ -38,90 +36,124 @@
 
     <div class="p-4 flex justify-between items-center glass m-2 rounded-2xl">
         <div class="flex items-center gap-3">
-            <div id="u-pic" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold">?</div>
+            <div id="u-pic" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold text-xl">?</div>
             <div>
-                <p id="u-name" class="text-sm font-bold">Loading...</p>
-                <p class="text-[10px] text-blue-400">PLATINUM USER</p>
+                <p id="u-name" class="text-sm font-bold">Загрузка...</p>
+                <p class="text-[10px] text-blue-400 font-bold">NFT COLLECTOR</p>
             </div>
         </div>
-        <p id="balance" class="text-yellow-400 font-bold">0 💎</p>
+        <p id="balance" class="text-yellow-400 font-bold text-lg">0 💎</p>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 pb-24">
-        <div id="cases" class="tab-content active text-center">
-            <div onclick="startSpin()" class="glass p-8 rounded-[40px] border-b-8 border-blue-600 active:scale-95 transition-all">
+        <div id="cases" class="tab-content active text-center pt-10">
+            <div onclick="startSpin()" class="glass p-8 rounded-[40px] border-b-8 border-blue-600 active:scale-95 transition-all inline-block w-full max-w-xs">
                 <div class="text-7xl mb-4">📦</div>
                 <h3 class="text-2xl font-bold">CYBER CASE</h3>
-                <p class="text-gray-400 text-sm mb-6">Жми, чтобы открыть</p>
-                <span class="bg-blue-600 px-8 py-3 rounded-full font-bold shadow-lg">100 💎</span>
+                <p class="text-gray-400 text-sm mb-6">Испытай удачу</p>
+                <span class="bg-blue-600 px-10 py-3 rounded-full font-bold shadow-lg">100 💎</span>
             </div>
         </div>
 
         <div id="inventory" class="tab-content">
-            <h2 class="text-xl font-bold mb-4">Инвентарь</h2>
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">🎒 Мои NFT</h2>
             <div id="inv-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
 
-        <div id="profile" class="tab-content text-center">
+        <div id="profile" class="tab-content text-center pt-5">
             <div class="glass p-6 rounded-3xl">
-                <div class="w-20 h-20 bg-slate-700 mx-auto rounded-full mb-4 border-2 border-white flex items-center justify-center text-3xl">👤</div>
-                <p id="p-name" class="font-bold text-xl"></p>
-                <button onclick="location.reload()" class="mt-6 text-xs text-gray-500">Обновить страницу</button>
+                <div class="w-24 h-24 bg-slate-700 mx-auto rounded-full mb-4 border-4 border-blue-500 flex items-center justify-center text-4xl">👤</div>
+                <p id="p-name" class="font-bold text-2xl mb-1"></p>
+                <p class="text-blue-400 text-sm mb-4">ID: <span id="u-id">---</span></p>
+                <button onclick="location.reload()" class="bg-slate-800 px-6 py-2 rounded-xl text-xs font-bold text-gray-400">ОБНОВИТЬ ДАННЫЕ</button>
             </div>
         </div>
     </div>
 
-    <div class="fixed bottom-4 left-4 right-4 h-16 glass rounded-2xl flex justify-around items-center z-50">
-        <button onclick="showTab('cases')">📦</button>
-        <button onclick="showTab('inventory')">🎒</button>
-        <button onclick="showTab('profile')">👤</button>
+    <div class="fixed bottom-4 left-4 right-4 h-20 glass rounded-[25px] flex justify-around items-center z-50 px-4">
+        <button onclick="showTab('cases')" class="text-3xl active:scale-125 transition-transform">📦</button>
+        <button onclick="showTab('inventory')" class="text-3xl active:scale-125 transition-transform">🎒</button>
+        <button onclick="showTab('profile')" class="text-3xl active:scale-125 transition-transform">👤</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.enableClosingConfirmation();
 
-        // ССЫЛКА ИЗ NGROK — ЗАМЕНИ ЕЕ!
+        // ССЫЛКА ИЗ NGROK
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
 
-        const uName = tg.initDataUnsafe.user?.first_name || "Игрок";
-        document.getElementById('u-name').innerText = uName;
-        document.getElementById('p-name').innerText = uName;
-        document.getElementById('u-pic').innerText = uName[0];
+        const user = tg.initDataUnsafe.user || { id: 123, first_name: "Игрок" };
+        document.getElementById('u-name').innerText = user.first_name;
+        document.getElementById('p-name').innerText = user.first_name;
+        document.getElementById('u-pic').innerText = user.first_name[0];
+        document.getElementById('u-id').innerText = user.id;
 
         function showTab(t) {
             document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
             document.getElementById(t).classList.add('active');
+            if(t === 'inventory') sync();
         }
 
         async function sync() {
             try {
-                const id = tg.initDataUnsafe.user?.id || 123;
-                const r = await fetch(`${SERVER_URL}/get_user?user_id=${id}`);
+                const r = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}`);
                 const d = await r.json();
                 document.getElementById('balance').innerText = d.balance + " 💎";
                 
                 const grid = document.getElementById('inv-grid');
-                grid.innerHTML = d.inventory.map(i => `
-                    <div class="glass p-3 rounded-xl text-center">
-                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i}" class="w-16 h-16 mx-auto mb-1">
-                        <p class="text-[9px] truncate">${i}</p>
+                if(d.inventory.length === 0) {
+                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10">Тут пока пусто...</p>';
+                    return;
+                }
+
+                grid.innerHTML = d.inventory.map((item, index) => `
+                    <div class="glass p-3 rounded-2xl text-center border-b-4 border-blue-500">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-20 h-20 mx-auto mb-2">
+                        <p class="text-[10px] font-bold truncate mb-3">${item}</p>
+                        <button onclick="sellItem('${item}')" class="w-full bg-green-600 py-2 rounded-lg text-[10px] font-bold active:bg-green-700 transition-colors">
+                            ПРОДАТЬ
+                        </button>
                     </div>
                 `).join('');
-            } catch(e) {}
+            } catch(e) { console.error("Sync error:", e); }
+        }
+
+        async function sellItem(itemName) {
+            tg.HapticFeedback.impactOccurred('medium');
+            try {
+                const res = await fetch(`${SERVER_URL}/sell_item`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: user.id, item_name: itemName})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                    sync();
+                }
+            } catch(e) { alert("Ошибка при продаже"); }
         }
 
         async function startSpin() {
-            const id = tg.initDataUnsafe.user?.id || 123;
-            const res = await fetch(`${SERVER_URL}/open_case`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({user_id: id})
-            });
-            const data = await res.json();
+            // Мгновенная реакция
+            tg.HapticFeedback.impactOccurred('rigid');
             
-            // Запуск анимации
-            runRoulette(data.item);
+            try {
+                const res = await fetch(`${SERVER_URL}/open_case`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: user.id})
+                });
+                const data = await res.json();
+                
+                if(data.error) {
+                    tg.showAlert("Недостаточно 💎");
+                    return;
+                }
+                runRoulette(data.item);
+            } catch(e) { tg.showAlert("Сервер недоступен!"); }
         }
 
         function runRoulette(winnerItem) {
@@ -133,15 +165,14 @@
             list.innerHTML = '';
             winText.style.opacity = '0';
             
-            const items = ["Neon", "Gold", "Steel", "Cyber", "Void", "Flame", "Ice"];
-            const cardWidth = 110; // Ширина одного элемента
+            const pool = ["Neon NFT", "Gold NFT", "Cyber Sword", "Void Armor", "Flame Wings", "Ice Ring"];
+            const cardWidth = 110; 
             
-            // Генерируем ленту
             for(let i=0; i<60; i++) {
-                const name = i === 50 ? winnerItem : items[Math.floor(Math.random()*items.length)];
+                const name = i === 50 ? winnerItem : pool[Math.floor(Math.random()*pool.length)];
                 const div = document.createElement('div');
-                div.className = `min-w-[100px] h-[120px] m-[5px] glass rounded-xl flex flex-col items-center justify-center border-b-4 ${name === winnerItem && i === 50 ? 'border-yellow-500' : 'border-blue-500'}`;
-                div.innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-12 h-12">`;
+                div.className = `min-w-[100px] h-[120px] m-[5px] glass rounded-xl flex flex-col items-center justify-center border-b-4 ${i === 50 ? 'border-yellow-500' : 'border-blue-500'}`;
+                div.innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-14 h-14">`;
                 list.appendChild(div);
             }
 
@@ -156,18 +187,16 @@
 
             setTimeout(() => {
                 tg.HapticFeedback.notificationOccurred('success');
-                winText.innerText = "Выпало: " + winnerItem;
+                winText.innerText = "ВЫ ВЫИГРАЛИ: " + winnerItem;
                 winText.style.opacity = '1';
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     sync();
-                }, 2000);
+                }, 2500);
             }, 4500);
         }
 
         sync();
     </script>
 </body>
-
 </html>
-
