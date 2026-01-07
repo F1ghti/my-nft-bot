@@ -161,37 +161,41 @@
         }
 
         async function loadTop() {
-            const list = document.getElementById('top-list');
-            try {
-                const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
-                const topUsers = await res.json();
-                
-                list.innerHTML = topUsers.map((u, index) => {
-                    let rankClass = "";
-                    let badgeColor = "bg-gray-700";
-                    if(index === 0) { rankClass = "top-1"; badgeColor = "bg-yellow-500"; }
-                    if(index === 1) badgeColor = "bg-gray-300 text-black";
-                    if(index === 2) badgeColor = "bg-orange-600";
+    const list = document.getElementById('top-list');
+    try {
+        const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
+        const users = await res.json();
+        list.innerHTML = users.map((u, i) => {
+            // Если у пользователя есть фото, используем его, иначе — заглушку с буквой
+            const avatarHtml = u.photo_url 
+                ? `<img src="${u.photo_url}" class="w-10 h-10 rounded-full object-cover border border-white/20">`
+                : `<div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold text-xs border border-white/10">
+                    ${u.username ? u.username[0].toUpperCase() : '?'}
+                   </div>`;
 
-                    return `
-                    <div class="glass p-4 rounded-2xl flex justify-between items-center ${u.user_id == user.id ? 'border border-blue-500' : ''} ${rankClass}">
-                        <div class="flex items-center gap-4">
-                            <div class="rank-badge ${badgeColor}">${index + 1}</div>
-                            <div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-bold text-xs">
-                                ${u.username ? u.username[0].toUpperCase() : 'P'}
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold truncate w-32">${u.username || 'Аноним'}</p>
-                                <p class="text-[10px] text-gray-400 uppercase">Elite Player</p>
-                            </div>
+            let rankStyle = "";
+            if (i === 0) rankStyle = "border border-yellow-500/50 bg-yellow-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
+
+            return `
+                <div class="glass p-4 rounded-2xl flex justify-between items-center ${rankStyle} ${u.user_id == user.id ? 'ring-1 ring-blue-400' : ''}">
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm font-black ${i < 3 ? 'text-yellow-500' : 'text-gray-500'} w-5">#${i + 1}</span>
+                        ${avatarHtml}
+                        <div>
+                            <p class="text-sm font-bold truncate w-32">${u.username || 'Аноним'}</p>
+                            <p class="text-[9px] text-blue-400 font-bold uppercase tracking-wider">Level ${Math.floor(u.balance / 500) + 1}</p>
                         </div>
-                        <p class="font-black text-yellow-400">${u.balance.toLocaleString()} 💎</p>
                     </div>
-                `}).join('');
-            } catch(e) { 
-                list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки</p>'; 
-            }
-        }
+                    <div class="text-right">
+                        <p class="font-black text-yellow-400 text-sm">${u.balance.toLocaleString()} 💎</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch(e) { 
+        list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки топа</p>'; 
+    }
+}
 
         // --- ЛОГИКА ОСТАЛЬНЫХ ФУНКЦИЙ ---
         function openCasePreview() {
@@ -280,3 +284,4 @@
     </script>
 </body>
 </html>
+
