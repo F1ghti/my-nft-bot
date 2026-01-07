@@ -57,12 +57,12 @@
             <img id="u-pic-img" src="" class="w-10 h-10 rounded-full border-2 border-blue-500 hidden">
             <div id="u-pic-placeholder" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg uppercase">?</div>
             <div>
-                <p id="u-name" class="text-sm font-bold truncate w-24 italic">Игрок</p>
+                <p id="u-name" class="text-sm font-bold truncate w-24 italic">Загрузка...</p>
                 <p class="text-[9px] text-blue-400 font-bold uppercase tracking-tighter">Elite Member</p>
             </div>
         </div>
         <div class="text-right">
-            <p id="balance" class="text-yellow-400 font-black text-xl">Загрузка...</p>
+            <p id="balance" class="text-yellow-400 font-black text-xl">...</p>
         </div>
     </div>
 
@@ -96,11 +96,17 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- ВАЖНО: ЗАМЕНИ ЭТУ ССЫЛКУ НА СВОЙ НОВЫЙ NGROK ПЕРЕД ПУШЕМ НА GITHUB ---
+        // ССЫЛКА НА ТВОЙ NGROK (ОБЯЗАТЕЛЬНО ПРОБЕЛОВ БЫТЬ НЕ ДОЛЖНО)
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", username: "player", photo_url: "" };
         let isSpinning = false;
+
+        // Заголовки для обхода предупреждения ngrok
+        const fetchHeaders = {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"
+        };
 
         document.getElementById('u-name').innerText = user.first_name || user.username;
         if (user.photo_url) {
@@ -135,7 +141,9 @@
             try {
                 const name = encodeURIComponent(user.first_name || user.username);
                 const photo = encodeURIComponent(user.photo_url || "");
-                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`);
+                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`, {
+                    headers: fetchHeaders
+                });
                 
                 if (!res.ok) throw new Error();
                 const d = await res.json();
@@ -155,8 +163,8 @@
                     `).join('');
                 }
             } catch(e) {
-                document.getElementById('balance').innerText = "ОФФЛАЙН";
-                showToast("Сервер недоступен", "❌");
+                document.getElementById('balance').innerText = "СЕРВЕР OFF";
+                console.error("Sync error:", e);
             }
         }
 
@@ -165,7 +173,7 @@
             try {
                 const res = await fetch(`${SERVER_URL}/open_case`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id})
                 });
                 const data = await res.json();
@@ -194,6 +202,7 @@
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     showWinModal(data.item);
+                    tg.HapticFeedback.notificationOccurred('success');
                 }, 4600);
             } catch(e) { showToast("Ошибка связи", "❌"); }
         }
@@ -214,17 +223,18 @@
             try {
                 const res = await fetch(`${SERVER_URL}/sell_instantly`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id, item_name: item})
                 });
-                if((await res.json()).success) { closeWinModal(); showToast("Продано!", "💰"); }
+                const d = await res.json();
+                if(d.success) { closeWinModal(); showToast("Продано!", "💰"); }
             } catch(e) {}
         }
 
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
             try {
-                const r = await fetch(`${SERVER_URL}/get_market`);
+                const r = await fetch(`${SERVER_URL}/get_market`, { headers: fetchHeaders });
                 const items = await r.json();
                 if(items.length === 0) {
                     grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
@@ -260,7 +270,7 @@
             try {
                 const res = await fetch(`${SERVER_URL}/buy_from_market`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id, lot_id: id})
                 });
                 const data = await res.json();
@@ -273,10 +283,11 @@
             try {
                 const res = await fetch(`${SERVER_URL}/cancel_lot`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id, lot_id: id})
                 });
-                if((await res.json()).success) { showToast("Возвращено!", "🎒"); loadMarket(); sync(); }
+                const d = await res.json();
+                if(d.success) { showToast("Возвращено!", "🎒"); loadMarket(); sync(); }
             } catch(e) {}
         }
 
@@ -286,15 +297,16 @@
             try {
                 const res = await fetch(`${SERVER_URL}/list_on_market`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: fetchHeaders,
                     body: JSON.stringify({user_id: user.id, item_name: name, price: parseInt(price)})
                 });
-                if((await res.json()).success) { showToast("Выставлено!", "✅"); sync(); }
+                const d = await res.json();
+                if(d.success) { showToast("Выставлено!", "✅"); sync(); }
             } catch(e) {}
         }
 
         sync();
-        setInterval(sync, 15000); // Авто-обновление каждые 15 сек
+        setInterval(sync, 10000); 
     </script>
 </body>
 </html>
