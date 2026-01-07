@@ -20,6 +20,9 @@
         .roulette-item { width: 100px; height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05); }
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #3b82f6; z-index: 20; box-shadow: 0 0 15px #3b82f6; transform: translateX(-50%); }
 
+        /* Модалка содержимого */
+        #case-modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
+
         .notification-active { color: #facc15 !important; filter: drop-shadow(0 0 10px #facc15); animation: ring 1.5s infinite; opacity: 1 !important; }
         @keyframes ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(15deg); } 30% { transform: rotate(-15deg); } }
     </style>
@@ -39,6 +42,15 @@
         </div>
     </div>
 
+    <div id="case-modal" class="flex-col items-center justify-center p-6">
+        <div class="glass w-full max-w-sm rounded-[40px] p-8 flex flex-col items-center relative">
+            <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 text-xl">✕</button>
+            <h3 class="text-xl font-black uppercase italic mb-6 text-blue-400">Содержимое кейса</h3>
+            <div id="modal-items" class="grid grid-cols-2 gap-4 w-full mb-8"></div>
+            <button onclick="startSpin(); closeModal();" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all">ОТКРЫТЬ ЗА 100 💎</button>
+        </div>
+    </div>
+
     <div id="main-slider">
         <div class="tab-content flex flex-col items-center">
             <div id="roulette-box" class="roulette-wrapper glass rounded-3xl">
@@ -46,18 +58,18 @@
                 <div id="roulette-track" class="roulette-track"></div>
             </div>
 
-            <div id="case-ui" class="flex flex-col items-center">
-                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-40 h-40 mb-4 drop-shadow-2xl">
-                <h2 class="text-2xl font-black italic uppercase tracking-tighter mb-2">Cyber Case</h2>
-                <button onclick="startSpin()" class="bg-blue-600 px-16 py-3 rounded-full text-xl font-black shadow-xl active:scale-95 transition-all mb-8">100 💎</button>
-                
-                <div class="w-full">
-                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-3 tracking-widest text-center">Возможный дроп:</p>
-                    <div id="case-content" class="flex justify-center gap-2 overflow-x-auto pb-4"></div>
+            <div id="case-ui" class="flex flex-col items-center py-10">
+                <div class="relative group cursor-pointer" onclick="openModal()">
+                    <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-20 group-active:opacity-40"></div>
+                    <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-48 h-48 mb-6 drop-shadow-2xl relative">
+                    <div class="absolute bottom-4 right-0 bg-blue-600 p-2 rounded-full shadow-lg border-2 border-white/10">🔍</div>
                 </div>
+                <h2 class="text-3xl font-black italic uppercase tracking-tighter mb-2">Cyber Case</h2>
+                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em] mb-6">Нажми на кейс, чтобы заглянуть внутрь</p>
+                <button onclick="startSpin()" class="bg-blue-600 px-16 py-4 rounded-full text-2xl font-black shadow-xl active:scale-95 transition-all">100 💎</button>
             </div>
         </div>
-
+        
         <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Marketplace</h2><div id="market-list" class="flex flex-col gap-3"></div></div>
         <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Collection</h2><div id="inv-grid" class="grid grid-cols-2 gap-4"></div></div>
         <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Top Players</h2><div id="top-list" class="glass rounded-3xl p-4 space-y-4"></div></div>
@@ -73,17 +85,31 @@
     <script>
         const tg = window.Telegram.WebApp;
         const user = tg.initDataUnsafe.user || { id: 0, first_name: "Player" };
-        const itemsList = ["Cyber Cat", "Neon Knight", "Glitch Void", "Diamond Dragon", "Pixel God"];
+        const itemsList = [
+            { name: "Cyber Cat", rare: "Common" },
+            { name: "Neon Knight", rare: "Rare" },
+            { name: "Glitch Void", rare: "Epic" },
+            { name: "Diamond Dragon", rare: "Legendary" },
+            { name: "Pixel God", rare: "Mythic" }
+        ];
         let lastBalance = 0;
 
-        // Инициализация аватара и содержимого кейса
         document.getElementById('u-avatar').src = user.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`;
-        document.getElementById('case-content').innerHTML = itemsList.map(item => `
-            <div class="glass min-w-[70px] p-2 rounded-xl text-center">
-                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-8 h-8 mx-auto">
-                <p class="text-[7px] mt-1 font-bold truncate">${item}</p>
-            </div>
-        `).join('');
+
+        function openModal() {
+            const modal = document.getElementById('case-modal');
+            const list = document.getElementById('modal-items');
+            modal.style.display = 'flex';
+            list.innerHTML = itemsList.map(item => `
+                <div class="bg-white/5 p-3 rounded-2xl text-center border border-white/5">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item.name}" class="w-10 h-10 mx-auto mb-1">
+                    <p class="text-[9px] font-bold truncate">${item.name}</p>
+                    <p class="text-[7px] text-blue-400 uppercase">${item.rare}</p>
+                </div>
+            `).join('');
+        }
+
+        function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
 
         async function api(path, body = null) {
             const res = await fetch(window.location.origin + path, {
@@ -105,10 +131,9 @@
             ui.style.display = 'none';
             box.style.display = 'block';
 
-            // Генерируем ленту для рулетки (45 элементов)
             let itemsHTML = "";
             for(let i=0; i<45; i++) {
-                const item = (i === 40) ? res.item : itemsList[Math.floor(Math.random() * itemsList.length)];
+                const item = (i === 40) ? res.item : itemsList[Math.floor(Math.random() * itemsList.length)].name;
                 itemsHTML += `<div class="roulette-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16"></div>`;
             }
             track.innerHTML = itemsHTML;
@@ -117,7 +142,6 @@
 
             setTimeout(() => {
                 track.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
-                // Высчитываем центр: (индекс * ширина) - (половина экрана) + (половина айтема)
                 const shift = (40 * 100) - (window.innerWidth / 2) + 50;
                 track.style.transform = `translateX(-${shift}px)`;
             }, 50);
@@ -138,7 +162,6 @@
             document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
 
-            // Рендер инвентаря
             document.getElementById('inv-grid').innerHTML = (d.inventory || []).map(item => `
                 <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
@@ -147,10 +170,9 @@
                 </div>
             `).join('') || '<p class="col-span-2 text-center opacity-50 py-10">Пусто</p>';
 
-            // Рендер маркета
             const m = await api('/get_market');
             document.getElementById('market-list').innerHTML = m.map(lot => `
-                <div class="glass p-3 rounded-2xl flex justify-between items-center">
+                <div class="glass p-3 rounded-2xl flex justify-between items-center border border-white/5">
                     <div class="flex items-center gap-3">
                         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${lot.item_name}" class="w-10 h-10">
                         <div><p class="text-xs font-bold leading-none">${lot.item_name}</p><p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p></div>
