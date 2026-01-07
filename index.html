@@ -121,154 +121,115 @@
     </div>
 
     <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-    tg.ready(); // Сообщаем Telegram, что приложение готово к работе
+const tg = window.Telegram.WebApp;
+tg.expand();
+tg.ready();
 
-    // Ссылка на сервер БЕЗ слеша в конце
-    const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
-    
-    // Получаем данные пользователя. Если открыто не в TG - ставим заглушку.
-    const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", photo_url: "" };
+const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; // ДОЛЖНО СОВПАДАТЬ С PYTHON
+const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
-    async function api(path, body = null) {
-        try {
-            const opt = { 
-                method: body ? 'POST' : 'GET',
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "ngrok-skip-browser-warning": "1" 
-                }
-            };
-            if(body) opt.body = JSON.stringify(body);
-            
-            const res = await fetch(SERVER_URL + path, opt);
-            if (!res.ok) throw new Error('Ошибка сервера');
-            return await res.json();
-        } catch(e) { 
-            console.error("Ошибка API:", e); 
-            return null; 
-        }
+async function api(path, body = null) {
+    try {
+        const res = await fetch(SERVER_URL + path, {
+            method: body ? 'POST' : 'GET',
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            body: body ? JSON.stringify(body) : null
+        });
+        return await res.json();
+    } catch (e) {
+        console.error("Ошибка:", e);
+        return null;
     }
+}
 
-    // Синхронизация данных пользователя
-    async function sync() {
-        const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}&photo_url=${encodeURIComponent(user.photo_url || '')}`);
-        
-        if(!d) {
-            document.getElementById('u-name').innerText = "Ошибка связи";
-            return;
-        }
+async function sync() {
+    const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}`);
+    if (!d) return;
 
-        document.getElementById('balance').innerText = (d.balance || 0).toLocaleString() + " 💎";
-        document.getElementById('u-name').innerText = user.first_name;
-        
-        if(user.photo_url) {
-            const pic = document.getElementById('u-pic');
-            pic.src = user.photo_url; 
-            pic.classList.remove('hidden');
-            document.getElementById('u-no-pic').classList.add('hidden');
-        }
+    document.getElementById('balance').innerText = (d.balance || 0).toLocaleString() + " 💎";
+    document.getElementById('u-name').innerText = user.first_name;
 
-        const grid = document.getElementById('inv-grid');
-        if(!d.inventory || d.inventory.length === 0) {
-            grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Рюкзак пуст</p>';
-        } else {
-            grid.innerHTML = d.inventory.map(item => `
-                <div class="glass p-4 rounded-[30px] text-center border-b-4 border-blue-500/30 active:scale-90 transition-all cursor-pointer">
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-20 h-20 mx-auto mb-2">
-                    <p class="text-[10px] font-black uppercase mb-1 truncate">${item}</p>
-                    <p class="text-[8px] text-blue-400 font-bold uppercase">Владелец</p>
-                </div>
-            `).join('');
-        }
-    }
-
-    // Показ содержимого кейса (превью)
-    async function showPreview() {
-        const info = await api('/get_case_info');
-        if(!info) return;
-        
-        const list = document.getElementById('preview-list');
-        list.innerHTML = info.items.map(i => `
-            <div class="glass p-3 rounded-2xl text-center">
-                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.name}" class="w-12 h-12 mx-auto mb-2">
-                <p class="text-[10px] font-bold uppercase">${i.name}</p>
-                <p class="text-[8px] text-yellow-500">${i.chance}% шанс</p>
+    const grid = document.getElementById('inv-grid');
+    if (!d.inventory || d.inventory.length === 0) {
+        grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Рюкзак пуст</p>';
+    } else {
+        grid.innerHTML = d.inventory.map(item => `
+            <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/20">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
+                <p class="text-[10px] font-bold uppercase truncate">${item}</p>
             </div>
         `).join('');
-        document.getElementById('preview-modal').style.display = 'flex';
+    }
+}
+
+async function startSpin() {
+    const res = await api('/open_case', { user_id: user.id });
+    if (!res || !res.success) return tg.showAlert(res ? res.error : "Ошибка сети");
+
+    tg.HapticFeedback.impactOccurred('heavy');
+    const wrap = document.getElementById('roulette-wrap');
+    const list = document.getElementById('roulette-list');
+    
+    wrap.style.display = 'flex';
+    list.innerHTML = '';
+    list.style.transition = 'none';
+    list.style.transform = 'translateX(0)';
+
+    const info = await api('/get_case_info');
+    const pool = info.items.map(i => i.name);
+
+    for (let i = 0; i < 60; i++) {
+        const name = (i === 50) ? res.item : pool[Math.floor(random() * pool.length)];
+        list.innerHTML += `<div class="min-w-[120px] h-[120px] glass m-[5px] rounded-3xl flex items-center justify-center shrink-0">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-20 h-20">
+        </div>`;
     }
 
-    // Вращение рулетки
-    async function startSpin() {
-        const res = await api('/open_case', {user_id: user.id});
-        if(!res || !res.success) { 
-            return tg.showAlert(res ? res.error : "Ошибка подключения к серверу"); 
-        }
-        
-        tg.HapticFeedback.impactOccurred('heavy');
-        const wrap = document.getElementById('roulette-wrap');
-        const list = document.getElementById('roulette-list');
-        
-        wrap.style.display = 'flex';
-        list.innerHTML = '';
-        list.style.transition = 'none';
-        list.style.transform = 'translateX(0)';
-        
-        const info = await api('/get_case_info');
-        const pool = info.items.map(i => i.name);
-        
-        // Генерируем ленту предметов
-        for(let i=0; i<60; i++) {
-            const name = (i === 50) ? res.item : pool[Math.floor(Math.random()*pool.length)];
-            list.innerHTML += `<div class="min-w-[120px] h-[120px] glass m-[5px] rounded-3xl flex items-center justify-center shrink-0"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-20 h-20"></div>`;
-        }
-        
-        setTimeout(() => {
-            list.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.05, 1)';
-            const shift = (50 * 130) - (window.innerWidth / 2) + 65;
-            list.style.transform = `translateX(-${shift}px)`;
-        }, 50);
+    setTimeout(() => {
+        list.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.05, 1)';
+        const shift = (50 * 130) - (window.innerWidth / 2) + 65;
+        list.style.transform = `translateX(-${shift}px)`;
+    }, 50);
 
-        setTimeout(() => {
-            wrap.style.display = 'none';
-            document.getElementById('win-modal').style.display = 'flex';
-            document.getElementById('win-name').innerText = res.item;
-            document.getElementById('win-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${res.item}" class="w-40 h-40 mx-auto">`;
-        }, 4500);
+    setTimeout(() => {
+        wrap.style.display = 'none';
+        document.getElementById('win-modal').style.display = 'flex';
+        document.getElementById('win-name').innerText = res.item;
+        document.getElementById('win-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${res.item}" class="w-32 h-32 mx-auto">`;
+    }, 4500);
+}
+
+function closeWin() { 
+    document.getElementById('win-modal').style.display = 'none'; 
+    sync(); 
+}
+
+function goToTab(idx) {
+    document.getElementById('main-slider').style.transform = `translateX(-${idx * 100}vw)`;
+    document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    if (idx === 3) loadTop();
+}
+
+async function loadTop() {
+    const top = await api('/get_top');
+    if (top) {
+        document.getElementById('top-list').innerHTML = top.map((u, i) => `
+            <div class="glass p-4 rounded-2xl flex justify-between">
+                <p>${i + 1}. ${u.username}</p>
+                <p class="text-yellow-400 font-bold">${u.balance} 💎</p>
+            </div>
+        `).join('');
     }
+}
 
-    function closeWin() { 
-        document.getElementById('win-modal').style.display = 'none'; 
-        sync(); 
-    }
+// Вспомогательная функция для случайных чисел в рулетке
+function random() { return Math.random(); }
 
-    function goToTab(idx) {
-        document.getElementById('main-slider').style.transform = `translateX(-${idx * 100}vw)`;
-        document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-        if(idx === 3) loadTop();
-    }
-
-    async function loadTop() {
-        const top = await api('/get_top');
-        if(top) {
-            document.getElementById('top-list').innerHTML = top.map((u, i) => `
-                <div class="glass p-4 rounded-2xl flex justify-between items-center">
-                    <p class="text-sm font-bold">${i+1}. ${u.username}</p>
-                    <p class="text-yellow-400 font-black text-sm">${u.balance.toLocaleString()} 💎</p>
-                </div>
-            `).join('');
-        }
-    }
-
-    // Инициализация
-    window.onload = () => { 
-        sync(); 
-    };
+window.onload = sync;
 </script>
 </body>
 </html>
+
 
 
 
