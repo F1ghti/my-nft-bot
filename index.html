@@ -145,13 +145,33 @@
 
         // --- УВЕДОМЛЕНИЯ ---
         async function checkNotifications() {
-            const notes = await api(`/get_notifications?user_id=${user.id}`);
-            if (notes && notes.length > 0) {
-                lastNotification = notes.map(n => n.message).join("\n\n");
-                document.getElementById('notif-dot').classList.remove('hidden');
-                tg.HapticFeedback.notificationOccurred('success');
+            try {
+                // Запрашиваем данные у сервера
+                const res = await fetch(`${SERVER_URL}/get_notifications?user_id=${user.id}`, {
+                    headers: { "ngrok-skip-browser-warning": "1" }
+                });
+                const notes = await res.json();
+                
+                console.log("Проверка уведомлений:", notes); // Это для отладки
+
+                if (notes && notes.length > 0) {
+                    // Если пришло хоть одно уведомление
+                    lastNotification = notes.map(n => n.message).join("\n\n");
+                    
+                    // Показываем красную точку
+                    const dot = document.getElementById('notif-dot');
+                    if (dot) dot.classList.remove('hidden');
+                    
+                    // Вибрация
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            } catch (e) {
+                console.error("Ошибка при получении уведомлений:", e);
             }
         }
+        
+        // Уменьшим интервал до 5 секунд для теста
+        setInterval(checkNotifications, 5000);
 
         function handleNotifClick() {
             if (lastNotification) {
@@ -340,3 +360,4 @@
     </script>
 </body>
 </html>
+
