@@ -11,7 +11,7 @@
         body { font-family: 'Inter', sans-serif; background: #0b1120; color: white; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
         
-        /* Ширина 400%, так как теперь 4 таба */
+        /* Важно: 400% для 4-х табов */
         #main-slider { display: flex; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); height: 100%; width: 400%; }
         .tab-content { width: 100vw; height: calc(100vh - 120px); overflow-y: auto; padding: 20px 20px 160px 20px; flex-shrink: 0; }
         
@@ -30,6 +30,10 @@
         
         .notification-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: #ef4444; border: 2px solid #1e293b; border-radius: 50%; display: none; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        
+        /* Стили для пьедестала в ТОПе */
+        .top-1 { border: 1px solid #f59e0b; background: linear-gradient(to right, rgba(245, 158, 11, 0.1), transparent); }
+        .rank-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; }
     </style>
 </head>
 <body class="h-screen flex flex-col p-2">
@@ -121,6 +125,7 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        // Убедись, что этот URL совпадает с твоим NGROK
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок" };
         
@@ -143,24 +148,35 @@
             if (isSpinning) return;
             currentTab = index;
             document.getElementById('main-slider').style.transform = `translateX(-${index * 100}vw)`;
-            [0,1,2,3].forEach(i => { document.getElementById(`btn-${i}`).style.opacity = (i === index) ? "1" : "0.4"; });
+            // Обновляем прозрачность для 4 кнопок
+            [0,1,2,3].forEach(i => { 
+                const btn = document.getElementById(`btn-${i}`);
+                if(btn) btn.style.opacity = (i === index) ? "1" : "0.4"; 
+            });
+            
             if (index === 1) loadMarket();
             if (index === 2) sync();
             if (index === 3) loadTop();
             tg.HapticFeedback.impactOccurred('light');
         }
 
-        // --- ЛОГИКА ТОПА ---
         async function loadTop() {
             const list = document.getElementById('top-list');
             try {
                 const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
-                const topUsers = await res.json(); // Ожидаем массив [{username, balance}, ...]
+                const topUsers = await res.json();
                 
-                list.innerHTML = topUsers.map((u, index) => `
-                    <div class="glass p-4 rounded-2xl flex justify-between items-center ${u.user_id == user.id ? 'border border-blue-500' : ''}">
+                list.innerHTML = topUsers.map((u, index) => {
+                    let rankClass = "";
+                    let badgeColor = "bg-gray-700";
+                    if(index === 0) { rankClass = "top-1"; badgeColor = "bg-yellow-500"; }
+                    if(index === 1) badgeColor = "bg-gray-300 text-black";
+                    if(index === 2) badgeColor = "bg-orange-600";
+
+                    return `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center ${u.user_id == user.id ? 'border border-blue-500' : ''} ${rankClass}">
                         <div class="flex items-center gap-4">
-                            <span class="text-lg font-black ${index < 3 ? 'text-yellow-500' : 'text-gray-500'} w-6">#${index + 1}</span>
+                            <div class="rank-badge ${badgeColor}">${index + 1}</div>
                             <div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-bold text-xs">
                                 ${u.username ? u.username[0].toUpperCase() : 'P'}
                             </div>
@@ -171,13 +187,13 @@
                         </div>
                         <p class="font-black text-yellow-400">${u.balance.toLocaleString()} 💎</p>
                     </div>
-                `).join('');
+                `}).join('');
             } catch(e) { 
-                list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки топа</p>'; 
+                list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки</p>'; 
             }
         }
 
-        // --- ОСТАЛЬНАЯ ЛОГИКА (БЕЗ ИЗМЕНЕНИЙ) ---
+        // --- ЛОГИКА ОСТАЛЬНЫХ ФУНКЦИЙ ---
         function openCasePreview() {
             if (isSpinning) return;
             const modal = document.getElementById('case-preview-modal');
