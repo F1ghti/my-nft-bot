@@ -25,7 +25,7 @@
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold">?</div>
             <div>
                 <p id="u-name" class="font-bold text-sm leading-none italic">Загрузка...</p>
-                <p class="text-[9px] text-blue-400 font-bold uppercase mt-1 tracking-widest">Platinum Member</p>
+                <p class="text-[9px] text-blue-400 font-bold uppercase mt-1 tracking-widest tracking-tighter">Member</p>
             </div>
         </div>
         <div class="text-right"><p id="balance" class="text-yellow-400 font-black text-xl">0 💎</p></div>
@@ -63,13 +63,18 @@
 
     <script>
         const tg = window.Telegram.WebApp;
+        tg.expand();
+        
         const SERVER_URL = window.location.origin;
         const user = tg.initDataUnsafe.user || { id: 877067120, first_name: "Player" };
         const itemsList = ["Cyber Cat", "Neon Knight", "Glitch Void", "Diamond Dragon", "Pixel God"];
 
         async function api(path, body = null) {
             try {
-                const opt = { method: body ? 'POST' : 'GET', headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" } };
+                const opt = { 
+                    method: body ? 'POST' : 'GET', 
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" } 
+                };
                 if(body) opt.body = JSON.stringify(body);
                 const res = await fetch(SERVER_URL + path, opt);
                 return await res.json();
@@ -79,8 +84,11 @@
         async function sync() {
             const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}`);
             if(!d) return;
+            
             document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
+            
+            // Inventory
             const grid = document.getElementById('inv-grid');
             grid.innerHTML = (d.inventory || []).map(item => `
                 <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500">
@@ -88,7 +96,9 @@
                     <p class="text-[10px] font-bold uppercase mb-2 truncate">${item}</p>
                     <button onclick="listOnMarket('${item}')" class="bg-blue-600 text-[9px] px-3 py-1.5 rounded-full font-bold w-full">ВЫСТАВИТЬ</button>
                 </div>
-            `).join('') || '<p class="col-span-2 text-center text-gray-500 py-10">Инвентарь пуст</p>';
+            `).join('') || '<p class="col-span-2 text-center text-gray-500 py-10">Пусто</p>';
+
+            // Market
             const marketData = await api('/get_market');
             const mList = document.getElementById('market-list');
             mList.innerHTML = (marketData || []).map(lot => `
@@ -99,61 +109,79 @@
                     </div>
                     <button onclick="buyItem(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs">${lot.price} 💎</button>
                 </div>
-            `).join('') || '<p class="text-center text-gray-500 py-10">Рынок пуст</p>';
+            `).join('') || '<p class="text-center text-gray-500 py-10">Нет товаров</p>';
+
+            // Top
             const top = await api('/get_leaderboard');
             if(top) document.getElementById('top-list').innerHTML = top.map((u, i) => `<div class="flex justify-between items-center border-b border-white/5 pb-2"><span class="text-sm font-bold">${i+1}. ${u.username}</span><span class="text-yellow-400 font-black">${u.balance} 💎</span></div>`).join('');
         }
 
+        // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫСТАВЛЕНИЯ ---
         function listOnMarket(itemName) {
-    // Эта функция вызывает стандартное окно Telegram
-    tg.showPrompt(`Введите цену для ${itemName}:`, async (price) => {
-        if (!price) return; // Если нажали "Отмена"
-        
-        const p = parseInt(price);
-        if (isNaN(p) || p <= 0) {
-            tg.showAlert("Введите число больше 0");
-            return;
-        }
+            tg.showPrompt(`Укажите цену продажи для ${itemName}:`, async (price) => {
+                if (price === null || price === undefined || price === "") return;
+                
+                const p = parseInt(price);
+                if (isNaN(p) || p <= 0) {
+                    tg.showAlert("Введите число больше 0!");
+                    return;
+                }
 
-        const res = await api('/list_on_market', {
-            user_id: user.id, 
-            item: itemName, 
-            price: p
-        });
+                const res = await api('/list_on_market', {
+                    user_id: user.id, 
+                    item: itemName, 
+                    price: p
+                });
 
-        if(res && res.success) {
-            tg.showAlert("Выставлено на рынок!");
-            sync(); // Обновляем баланс и инвентарь
-        } else {
-            tg.showAlert(res ? res.error : "Ошибка сервера");
+                if(res && res.success) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                    tg.showAlert("✅ Предмет выставлен на рынок!");
+                    sync();
+                } else {
+                    tg.showAlert(res ? res.error : "Ошибка сервера");
+                }
+            });
         }
-    });
-}
 
         async function buyItem(lotId) {
             const res = await api('/buy_from_market', {user_id: user.id, lot_id: lotId});
-            if(res && res.success) { tg.showAlert("Куплено!"); sync(); }
-            else tg.showAlert(res ? res.error : "Ошибка");
+            if(res && res.success) {
+                tg.HapticFeedback.notificationOccurred('success');
+                tg.showAlert("Куплено!"); 
+                sync(); 
+            } else tg.showAlert(res ? res.error : "Ошибка");
         }
 
         async function startSpin() {
             const res = await api('/open_case', {user_id: user.id});
-            if(!res || !res.success) return tg.showAlert(res ? res.error : "Нет денег");
+            if(!res || !res.success) return tg.showAlert(res ? res.error : "Нет 💎");
+            
             const box = document.getElementById('roulette-box');
             const track = document.getElementById('roulette-track');
             const caseDisplay = document.getElementById('case-display');
-            caseDisplay.style.display = 'none'; box.style.display = 'block';
+            
+            caseDisplay.style.display = 'none'; 
+            box.style.display = 'block';
+            
             let html = "";
             for(let i=0; i<45; i++) {
                 const item = (i === 40) ? res.item : itemsList[Math.floor(Math.random()*itemsList.length)];
                 html += `<div class="roulette-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-12 h-12"></div>`;
             }
-            track.innerHTML = html; track.style.transform = 'translateX(0px)';
+            track.innerHTML = html; 
+            track.style.transform = 'translateX(0px)';
+            
             setTimeout(() => {
                 track.style.transform = `translateX(-${40 * 100 - (window.innerWidth / 2) + 50}px)`;
                 tg.HapticFeedback.impactOccurred('medium');
             }, 50);
-            setTimeout(() => { tg.showAlert("Выпало: " + res.item); box.style.display = 'none'; caseDisplay.style.display = 'flex'; sync(); }, 4500);
+            
+            setTimeout(() => { 
+                tg.showAlert("Выпало: " + res.item); 
+                box.style.display = 'none'; 
+                caseDisplay.style.display = 'flex'; 
+                sync(); 
+            }, 4500);
         }
 
         function goToTab(idx) {
@@ -161,6 +189,7 @@
             document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
             sync();
         }
+
         window.onload = sync;
     </script>
 </body>
