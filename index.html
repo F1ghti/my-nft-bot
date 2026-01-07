@@ -19,7 +19,9 @@
         .roulette-item { width: 100px; height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #3b82f6; z-index: 20; box-shadow: 0 0 15px #3b82f6; transform: translateX(-50%); }
 
-        #case-modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
+        .modal-full { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); }
+        .selected-for-craft { border: 2px solid #3b82f6 !important; background: rgba(59, 130, 246, 0.2) !important; transform: scale(0.95); }
+        
         .notification-active { color: #facc15 !important; filter: drop-shadow(0 0 10px #facc15); animation: ring 1.5s infinite; opacity: 1 !important; }
         @keyframes ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(15deg); } 30% { transform: rotate(-15deg); } }
     </style>
@@ -39,12 +41,20 @@
         </div>
     </div>
 
-    <div id="case-modal" class="flex flex-col items-center justify-center p-6">
+    <div id="case-modal" class="modal-full flex-col items-center justify-center p-6">
         <div class="glass w-full max-w-sm rounded-[40px] p-8 flex flex-col items-center relative">
-            <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 text-xl">✕</button>
-            <h3 class="text-xl font-black uppercase italic mb-6 text-blue-400 text-center">Содержимое кейса</h3>
+            <button onclick="closeModal('case-modal')" class="absolute top-6 right-6 text-gray-400 text-xl">✕</button>
+            <h3 class="text-xl font-black uppercase italic mb-6 text-blue-400">Содержимое</h3>
             <div id="modal-items" class="grid grid-cols-2 gap-4 w-full mb-8"></div>
-            <button onclick="startSpin(); closeModal();" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all">ОТКРЫТЬ 100 💎</button>
+            <button onclick="startSpin(); closeModal('case-modal');" class="w-full bg-blue-600 py-4 rounded-2xl font-black">ОТКРЫТЬ 100 💎</button>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="modal-full flex-col items-center justify-center p-6">
+        <div class="glass w-full max-w-sm rounded-[40px] p-8 flex flex-col items-center relative max-h-[80vh] overflow-y-auto">
+            <button onclick="closeModal('profile-modal')" class="absolute top-6 right-6 text-gray-400 text-xl">✕</button>
+            <h3 id="profile-title" class="text-xl font-black uppercase italic mb-4 text-blue-400 text-center">Профиль</h3>
+            <div id="profile-inv" class="grid grid-cols-2 gap-2 w-full"></div>
         </div>
     </div>
 
@@ -55,30 +65,32 @@
                 <div id="roulette-track" class="roulette-track"></div>
             </div>
             <div id="case-ui" class="flex flex-col items-center py-6">
-                <div class="relative group cursor-pointer mb-6" onclick="openModal()">
-                    <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-10"></div>
-                    <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-48 h-48 drop-shadow-2xl relative">
-                    <div class="absolute bottom-2 right-2 bg-blue-600 p-2 rounded-full border-2 border-white/10 shadow-lg">🔍</div>
+                <div class="relative group cursor-pointer mb-6" onclick="openCaseModal()">
+                    <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-48 h-48 drop-shadow-2xl">
+                    <div class="absolute bottom-2 right-2 bg-blue-600 p-2 rounded-full border-2 border-white/10">🔍</div>
                 </div>
-                <h2 class="text-3xl font-black italic uppercase mb-2">Cyber Case</h2>
-                <button onclick="startSpin()" class="bg-blue-600 px-16 py-4 rounded-full text-2xl font-black shadow-xl active:scale-95 transition-all">100 💎</button>
+                <h2 class="text-3xl font-black italic uppercase mb-4">Cyber Case</h2>
+                <button onclick="startSpin()" class="bg-blue-600 px-16 py-4 rounded-full text-2xl font-black shadow-xl active:scale-95">100 💎</button>
             </div>
         </div>
         
         <div class="tab-content">
-            <h2 class="text-2xl font-black mb-6 uppercase italic">Marketplace</h2>
+            <h2 class="text-2xl font-black mb-6 uppercase italic">Market</h2>
             <div id="market-list" class="flex flex-col gap-3"></div>
         </div>
 
         <div class="tab-content">
-            <h2 class="text-2xl font-black mb-6 uppercase italic">Collection</h2>
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-2xl font-black uppercase italic leading-none">Collection</h2>
+                <button id="craft-btn" onclick="sendCraft()" class="hidden bg-purple-600 px-4 py-2 rounded-xl text-[10px] font-black animate-pulse">КРАФТ (5/5)</button>
+            </div>
+            <p class="text-[10px] text-gray-400 mb-4 uppercase font-bold tracking-widest">Выбери 5 предметов для крафта</p>
             <div id="inv-grid" class="grid grid-cols-2 gap-4"></div>
         </div>
 
         <div class="tab-content">
             <h2 class="text-2xl font-black mb-6 uppercase italic">Top Players</h2>
-            <div id="top-list" class="glass rounded-3xl p-5 space-y-4">
-                </div>
+            <div id="top-list" class="glass rounded-3xl p-5 space-y-4"></div>
         </div>
     </div>
 
@@ -100,6 +112,7 @@
             { name: "Pixel God", rare: "Mythic" }
         ];
         let lastBalance = 0;
+        let selectedForCraft = [];
 
         document.getElementById('u-avatar').src = user.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`;
 
@@ -111,53 +124,73 @@
                     body: body ? JSON.stringify(body) : null
                 });
                 return await res.json();
-            } catch (e) { console.error(e); return null; }
+            } catch (e) { return null; }
         }
 
-        function openModal() {
+        function openCaseModal() {
             document.getElementById('case-modal').style.display = 'flex';
             document.getElementById('modal-items').innerHTML = itemsList.map(item => `
                 <div class="bg-white/5 p-3 rounded-2xl text-center border border-white/5">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item.name}" class="w-10 h-10 mx-auto mb-1">
                     <p class="text-[9px] font-bold truncate uppercase">${item.name}</p>
-                    <p class="text-[7px] text-blue-400 uppercase font-bold">${item.rare}</p>
                 </div>
             `).join('');
         }
 
-        function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
+        async function showProfile(uid) {
+            const data = await api(`/view_profile?user_id=${uid}`);
+            if(!data) return;
+            document.getElementById('profile-title').innerText = data.username;
+            document.getElementById('profile-inv').innerHTML = data.inventory.map(item => `
+                <div class="glass p-2 rounded-xl text-center">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-8 h-8 mx-auto">
+                    <p class="text-[8px] mt-1 truncate uppercase font-bold">${item}</p>
+                </div>
+            `).join('') || '<p class="col-span-2 text-center opacity-40">Пусто</p>';
+            document.getElementById('profile-modal').style.display = 'flex';
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function toggleCraft(item, el, idx) {
+            const pos = selectedForCraft.findIndex(s => s.idx === idx);
+            if(pos > -1) {
+                selectedForCraft.splice(pos, 1);
+                el.classList.remove('selected-for-craft');
+            } else if(selectedForCraft.length < 5) {
+                selectedForCraft.push({name: item, idx: idx});
+                el.classList.add('selected-for-craft');
+            }
+            document.getElementById('craft-btn').style.display = selectedForCraft.length === 5 ? 'block' : 'none';
+        }
+
+        async function sendCraft() {
+            const res = await api('/craft', {user_id: user.id, items: selectedForCraft.map(s => s.name)});
+            if(res.success) {
+                tg.showPopup({title: "🚀 Крафт!", message: `Вы получили: ${res.new_item}`});
+                selectedForCraft = [];
+                sync();
+            } else tg.showAlert(res.error);
+        }
 
         async function startSpin() {
             const res = await api('/open_case', {user_id: user.id});
-            if(!res || !res.success) return tg.showAlert(res?.error || "Ошибка");
-
+            if(!res?.success) return tg.showAlert(res?.error || "Ошибка");
             const box = document.getElementById('roulette-box');
             const track = document.getElementById('roulette-track');
-            const ui = document.getElementById('case-ui');
-
-            ui.style.display = 'none';
+            document.getElementById('case-ui').style.display = 'none';
             box.style.display = 'block';
-
-            let itemsHTML = "";
-            for(let i=0; i<45; i++) {
-                const item = (i === 40) ? res.item : itemsList[Math.floor(Math.random() * itemsList.length)].name;
-                itemsHTML += `<div class="roulette-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16"></div>`;
-            }
-            track.innerHTML = itemsHTML;
-            track.style.transition = 'none';
-            track.style.transform = 'translateX(0px)';
-
+            track.innerHTML = Array.from({length: 45}).map((_, i) => {
+                const item = (i === 40) ? res.item : itemsList[Math.floor(Math.random()*5)].name;
+                return `<div class="roulette-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16"></div>`;
+            }).join('');
+            track.style.transition = 'none'; track.style.transform = 'translateX(0px)';
             setTimeout(() => {
                 track.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
-                const shift = (40 * 100) - (window.innerWidth / 2) + 50;
-                track.style.transform = `translateX(-${shift}px)`;
+                track.style.transform = `translateX(-${(40 * 100) - (window.innerWidth / 2) + 50}px)`;
             }, 50);
-
             setTimeout(() => {
-                tg.HapticFeedback.notificationOccurred('success');
-                tg.showPopup({ title: '🎉 Выигрыш!', message: `Вы получили: ${res.item}`, buttons: [{type: 'ok'}] });
-                box.style.display = 'none';
-                ui.style.display = 'flex';
+                box.style.display = 'none'; document.getElementById('case-ui').style.display = 'flex';
                 sync();
             }, 4500);
         }
@@ -165,74 +198,47 @@
         async function sync() {
             const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}`);
             if(!d) return;
-
-            if(lastBalance > 0 && d.balance > lastBalance) {
-                document.getElementById('notif-bell').classList.add('notification-active');
-            }
-            lastBalance = d.balance;
             document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
 
-            // Рендер инвентаря
-            document.getElementById('inv-grid').innerHTML = (d.inventory || []).map(item => `
-                <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500">
+            document.getElementById('inv-grid').innerHTML = (d.inventory || []).map((item, idx) => `
+                <div onclick="toggleCraft('${item}', this, ${idx})" class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500 transition-all">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
                     <p class="text-[10px] font-bold uppercase truncate">${item}</p>
-                    <button onclick="sellItem('${item}')" class="mt-2 bg-blue-600 text-[10px] px-3 py-1.5 rounded-full font-bold w-full">ПРОДАТЬ</button>
+                    <button onclick="event.stopPropagation(); sellItem('${item}')" class="mt-2 bg-blue-600/50 text-[8px] px-2 py-1 rounded-full w-full">ПРОДАТЬ</button>
                 </div>
             `).join('') || '<p class="col-span-2 text-center opacity-50 py-10">Пусто</p>';
 
-            // Рендер маркета
             const m = await api('/get_market');
-            if(m) {
-                document.getElementById('market-list').innerHTML = m.map(lot => `
-                    <div class="glass p-3 rounded-2xl flex justify-between items-center border border-white/5">
-                        <div class="flex items-center gap-3">
-                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${lot.item_name}" class="w-10 h-10">
-                            <div><p class="text-xs font-bold leading-none">${lot.item_name}</p><p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p></div>
-                        </div>
-                        ${lot.seller_id == user.id ? 
-                            `<button onclick="cancelLot(${lot.lot_id})" class="bg-red-500/20 text-red-400 text-[10px] px-4 py-2 rounded-xl border border-red-500/50">СНЯТЬ</button>` : 
-                            `<button onclick="buyLot(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs">${lot.price} 💎</button>`
-                        }
+            document.getElementById('market-list').innerHTML = m.map(lot => `
+                <div class="glass p-3 rounded-2xl flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${lot.item_name}" class="w-10 h-10">
+                        <div><p class="text-xs font-bold leading-none">${lot.item_name}</p><p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p></div>
                     </div>
-                `).join('') || '<p class="text-center opacity-50 py-10">Рынок пуст</p>';
-            }
+                    ${lot.seller_id == user.id ? 
+                        `<button onclick="cancelLot(${lot.lot_id})" class="bg-red-500/20 text-red-400 text-[10px] px-4 py-2 rounded-xl border border-red-500/50">СНЯТЬ</button>` : 
+                        `<button onclick="buyLot(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs">${lot.price} 💎</button>`
+                    }
+                </div>
+            `).join('') || '<p class="text-center opacity-50">Рынок пуст</p>';
 
-            // Рендер ТОПА
             const top = await api('/get_leaderboard');
-            if(top) {
-                document.getElementById('top-list').innerHTML = top.map((u, i) => `
-                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span class="text-sm font-medium"><span class="opacity-40 mr-2">${i+1}.</span>${u.username}</span>
-                        <span class="text-yellow-400 font-black">${u.balance.toLocaleString()} 💎</span>
-                    </div>
-                `).join('') || '<p class="text-center opacity-50">Загрузка...</p>';
-            }
-        }
-
-        function checkNotifications() {
-            const b = document.getElementById('notif-bell');
-            if(b.classList.contains('notification-active')) {
-                tg.showAlert("💰 Ваш предмет успешно купили!");
-                b.classList.remove('notification-active');
-            } else tg.showAlert("Новых уведомлений нет.");
+            document.getElementById('top-list').innerHTML = top.map((u, i) => `
+                <div onclick="showProfile(${u.user_id})" class="flex justify-between items-center border-b border-white/5 pb-2 active:opacity-50">
+                    <span class="text-sm font-medium"><span class="opacity-40 mr-2">${i+1}.</span>${u.username}</span>
+                    <span class="text-yellow-400 font-black">${u.balance.toLocaleString()} 💎</span>
+                </div>
+            `).join('');
         }
 
         function sellItem(i) {
-            const p = prompt(`Введите цену для ${i}:`, "500");
-            if(p && p > 0) api('/list_on_market', {user_id: user.id, item: i, price: parseInt(p)}).then(() => sync());
+            const p = prompt(`Цена для ${i}:`, "500");
+            if(p > 0) api('/list_on_market', {user_id: user.id, item: i, price: parseInt(p)}).then(() => sync());
         }
 
         function cancelLot(id) { if(confirm("Снять с продажи?")) api('/cancel_lot', {user_id: user.id, lot_id: id}).then(() => sync()); }
-        
-        function buyLot(id) {
-            api('/buy_from_market', {user_id: user.id, lot_id: id}).then(res => {
-                if(res && res.success) { tg.HapticFeedback.impactOccurred('medium'); sync(); }
-                else tg.showAlert(res?.error || "Ошибка");
-            });
-        }
-
+        function buyLot(id) { api('/buy_from_market', {user_id: user.id, lot_id: id}).then(() => sync()); }
         function goToTab(idx) {
             document.getElementById('main-slider').style.transform = `translateX(-${idx * 100}vw)`;
             document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
