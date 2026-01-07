@@ -12,19 +12,18 @@
         
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
         
-        .tab-content { display: none; height: calc(100vh - 210px); overflow-y: auto; padding: 10px; }
+        /* Исправленный отступ для инвентаря, чтобы меню не перекрывало */
+        .tab-content { display: none; height: calc(100vh - 120px); overflow-y: auto; padding: 10px 10px 120px 10px; }
         .tab-content.active { display: block; animation: fadeIn 0.2s ease-out; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Toast уведомление */
         #toast { 
             position: fixed; top: -100px; left: 50%; transform: translateX(-50%); 
             z-index: 10000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
         }
         #toast.show { top: 20px; }
 
-        /* Окно выигрыша */
         #win-modal { 
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
             z-index: 11000; align-items: center; justify-content: center; padding: 20px;
@@ -49,7 +48,7 @@
     </div>
 
     <div id="win-modal">
-        <div class="glass p-8 rounded-[40px] w-full max-w-sm text-center win-card border-t-2 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.2)]">
+        <div class="glass p-8 rounded-[40px] w-full max-w-sm text-center win-card border-t-2 border-yellow-500 shadow-2xl">
             <h2 class="text-2xl font-black mb-2 text-yellow-500 uppercase italic">Поздравляем!</h2>
             <div id="win-item-img" class="my-6"></div>
             <h3 id="win-item-name" class="text-xl font-bold mb-6 text-white uppercase tracking-tighter">...</h3>
@@ -68,12 +67,12 @@
                 <div class="marker"></div>
                 <div id="roulette-list" class="roulette-container"></div>
             </div>
-        </div>
+            </div>
     </div>
 
     <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2 shadow-xl shrink-0">
         <div class="flex items-center gap-3">
-            <div id="u-pic" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg">?</div>
+            <div id="u-pic" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg uppercase">?</div>
             <div>
                 <p id="u-name" class="text-sm font-bold truncate w-24">Игрок</p>
                 <p class="text-[9px] text-blue-400 font-bold uppercase tracking-tighter">Elite Member</p>
@@ -90,18 +89,18 @@
                 <div class="text-8xl mb-4">📦</div>
                 <h3 class="text-2xl font-black uppercase italic">Cyber Case</h3>
                 <p class="text-gray-400 text-sm mb-6">Гарантированный NFT</p>
-                <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg">100 💎</div>
+                <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg"><span id="case-cost-display">100</span> 💎</div>
             </div>
         </div>
 
         <div id="market" class="tab-content">
             <h2 class="text-xl font-black mb-4 sticky top-0 bg-[#0b1120] z-10 py-2">🛒 МАРКЕТ</h2>
-            <div id="market-grid" class="flex flex-col gap-2 pb-24"></div>
+            <div id="market-grid" class="flex flex-col gap-2"></div>
         </div>
 
         <div id="inventory" class="tab-content">
-            <h2 class="text-xl font-black mb-4 sticky top-0 bg-[#0b1120] z-10 py-2">🎒 ИНВЕНТАРЬ</h2>
-            <div id="inv-grid" class="grid grid-cols-2 gap-3 pb-24"></div>
+            <h2 class="text-xl font-black mb-4 sticky top-0 bg-[#0b1120] z-10 py-2 uppercase italic">🎒 Твои NFT</h2>
+            <div id="inv-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
     </div>
 
@@ -116,11 +115,13 @@
         tg.expand();
         
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
+        const CASE_COST = 100; // Цена кейса здесь
         const user = tg.initDataUnsafe.user || { id: 123, first_name: "Игрок" };
         let isSpinning = false;
 
         document.getElementById('u-name').innerText = user.first_name;
         document.getElementById('u-pic').innerText = user.first_name[0];
+        document.getElementById('case-cost-display').innerText = CASE_COST;
 
         function showToast(msg, icon = '✨') {
             const t = document.getElementById('toast');
@@ -154,14 +155,14 @@
                 
                 const grid = document.getElementById('inv-grid');
                 if(!d.inventory || d.inventory.length === 0) {
-                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Пусто</p>';
+                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Инвентарь пуст</p>';
                     return;
                 }
                 grid.innerHTML = d.inventory.map(item => `
-                    <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/50">
+                    <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
                         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
-                        <p class="text-[10px] font-black truncate uppercase mb-3">${item}</p>
-                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-bold uppercase">Продать</button>
+                        <p class="text-[10px] font-black truncate uppercase mb-3 text-blue-300">${item}</p>
+                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">Продать</button>
                     </div>
                 `).join('');
             } catch(e) { }
@@ -176,7 +177,7 @@
                     body: JSON.stringify({user_id: user.id})
                 });
                 const data = await res.json();
-                if(data.error) return showToast("Недостаточно алмазов!", "❌");
+                if(data.error) return showToast("Мало 💎", "❌");
 
                 isSpinning = true;
                 const overlay = document.getElementById('roulette-overlay');
@@ -187,7 +188,7 @@
                 list.style.transition = 'none';
                 list.style.transform = 'translateX(0)';
 
-                const pool = ["Neon NFT", "Gold NFT", "Cyber Sword", "Void Armor", "Ice Ring"];
+                const pool = ["Neon NFT", "Gold NFT", "Cyber Sword", "Void Armor", "Ice Ring", "Flame Wings"];
                 for(let i=0; i<60; i++) {
                     const name = i === 50 ? data.item : pool[Math.floor(Math.random()*pool.length)];
                     list.innerHTML += `<div class="min-w-[110px] h-[120px] m-[5px] glass rounded-2xl flex items-center justify-center shrink-0"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-16 h-16"></div>`;
@@ -204,7 +205,7 @@
                     overlay.style.display = 'none';
                     showWinModal(data.item);
                 }, 4600);
-            } catch(e) { showToast("Сервер не отвечает", "❗"); isSpinning = false; }
+            } catch(e) { showToast("Ошибка", "❗"); isSpinning = false; }
         }
 
         function showWinModal(item) {
@@ -213,11 +214,11 @@
             const nameText = document.getElementById('win-item-name');
             const sellPriceSpan = document.getElementById('sell-price');
             
-            // Базовые цены для быстрой продажи
-            const prices = {"Neon NFT": 40, "Gold NFT": 120, "Cyber Sword": 60, "Void Armor": 160, "Ice Ring": 80};
-            const sPrice = prices[item] || 50;
+            // Расчет цены для быстрой продажи (80% от номинала)
+            const basePrices = {"Neon NFT": 50, "Gold NFT": 150, "Cyber Sword": 80, "Void Armor": 200, "Flame Wings": 300, "Ice Ring": 100};
+            const sPrice = Math.floor((basePrices[item] || 50) * 0.8);
 
-            imgDiv.innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-32 h-32 mx-auto drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">`;
+            imgDiv.innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-32 h-32 mx-auto drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]">`;
             nameText.innerText = item;
             sellPriceSpan.innerText = sPrice;
             
@@ -228,7 +229,7 @@
         function closeWinModal() {
             document.getElementById('win-modal').style.display = 'none';
             isSpinning = false;
-            showToast("Предмет добавлен в инвентарь", "🎒");
+            showToast("NFT добавлен в коллекцию", "🎒");
             sync();
         }
 
@@ -246,7 +247,7 @@
                     isSpinning = false;
                     sync();
                 }
-            } catch(e) { showToast("Ошибка продажи", "❗"); }
+            } catch(e) { showToast("Ошибка", "❗"); }
         }
 
         async function loadMarket() {
@@ -255,14 +256,14 @@
                 const r = await fetch(`${SERVER_URL}/get_market`);
                 const items = await r.json();
                 if(items.length === 0) {
-                    grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">Маркет пуст</p>';
+                    grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">Никто ничего не продает</p>';
                     return;
                 }
                 grid.innerHTML = items.map(i => `
                     <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 border-yellow-500 mb-2">
                         <div class="flex items-center gap-3">
                             <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
-                            <div><p class="font-bold text-xs uppercase">${i.item_name}</p></div>
+                            <p class="font-black text-[10px] uppercase">${i.item_name}</p>
                         </div>
                         <button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs active:scale-90 transition-all">${i.price} 💎</button>
                     </div>
@@ -279,14 +280,14 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    showToast("Успешная покупка!", "🛒");
+                    showToast("Куплено!", "🛒");
                     loadMarket(); sync();
                 } else { showToast(data.error, "❌"); }
             } catch(e) { }
         }
 
         async function sellItem(name) {
-            const price = prompt("Введите цену для продажи другим (💎):", "150");
+            const price = prompt("Укажи цену продажи (💎):", "150");
             if(!price || isNaN(price)) return;
             try {
                 const res = await fetch(`${SERVER_URL}/list_on_market`, {
