@@ -118,29 +118,32 @@
 
         // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫСТАВЛЕНИЯ ---
         function listOnMarket(itemName) {
-            tg.showPrompt(`Укажите цену продажи для ${itemName}:`, async (price) => {
-                if (price === null || price === undefined || price === "") return;
-                
-                const p = parseInt(price);
-                if (isNaN(p) || p <= 0) {
-                    tg.showAlert("Введите число больше 0!");
-                    return;
-                }
+    // Используем стандартный prompt браузера вместо tg.showPrompt
+    const price = prompt(`Введите цену продажи для ${itemName}:`, "100");
+    
+    if (price === null || price === "") return; // Если нажали "Отмена"
+    
+    const p = parseInt(price);
+    if (isNaN(p) || p <= 0) {
+        alert("Введите число больше 0!");
+        return;
+    }
 
-                const res = await api('/list_on_market', {
-                    user_id: user.id, 
-                    item: itemName, 
-                    price: p
-                });
-
-                if(res && res.success) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                    tg.showAlert("✅ Предмет выставлен на рынок!");
-                    sync();
-                } else {
-                    tg.showAlert(res ? res.error : "Ошибка сервера");
-                }
-            });
+    // Отправляем на сервер
+    api('/list_on_market', {
+        user_id: user.id, 
+        item: itemName, 
+        price: p
+    }).then(res => {
+        if(res && res.success) {
+            tg.HapticFeedback.notificationOccurred('success');
+            alert("✅ Выставлено!");
+            sync();
+        } else {
+            alert("❌ " + (res ? res.error : "Ошибка"));
+        }
+    });
+}
         }
 
         async function buyItem(lotId) {
