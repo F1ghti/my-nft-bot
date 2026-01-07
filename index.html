@@ -34,7 +34,7 @@
         </div>
     </div>
 
-    <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2">
+    <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2 shadow-xl">
         <div class="flex items-center gap-3">
             <div id="u-pic" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg">?</div>
             <div>
@@ -59,7 +59,7 @@
 
         <div id="market" class="tab-content">
             <h2 class="text-xl font-black mb-4 flex items-center gap-2">🛒 МАРКЕТПЛЕЙС</h2>
-            <div id="market-grid" class="flex flex-col gap-2"></div>
+            <div id="market-grid" class="flex flex-col gap-2 pb-10"></div>
         </div>
 
         <div id="inventory" class="tab-content">
@@ -76,8 +76,10 @@
 
     <script>
         const tg = window.Telegram.WebApp;
-        // !!! ВНИМАНИЕ: Ссылка должна быть ЧИСТОЙ, без лишних слов
-        const SERVER_URL = "https://12eaff4f4782.ngrok-free.app -> http://localhost:8080"; 
+        
+        // ВАЖНО: Только адрес ngrok без лишних знаков!
+        const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
+        
         const user = tg.initDataUnsafe.user || { id: 123, first_name: "Игрок" };
 
         document.getElementById('u-name').innerText = user.first_name;
@@ -108,12 +110,12 @@
                 }
                 grid.innerHTML = d.inventory.map(item => `
                     <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/50">
-                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-20 h-20 mx-auto mb-2">
-                        <p class="text-[11px] font-black truncate uppercase mb-3">${item}</p>
-                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[10px] font-bold uppercase">Продать</button>
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
+                        <p class="text-[10px] font-black truncate uppercase mb-3">${item}</p>
+                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-bold uppercase">Выставить</button>
                     </div>
                 `).join('');
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Ошибка связи:", e); }
         }
 
         async function startSpin() {
@@ -157,17 +159,17 @@
                     setTimeout(() => { overlay.style.display = 'none'; sync(); }, 2000);
                 }, 4500);
 
-            } catch(e) { tg.showAlert("Сервер не отвечает"); }
+            } catch(e) { tg.showAlert("Сервер не доступен"); }
         }
 
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
-            grid.innerHTML = '<p class="text-center text-gray-500 mt-10 italic">Загрузка...</p>';
+            grid.innerHTML = '<p class="text-center text-gray-500 py-10">Загрузка товаров...</p>';
             try {
                 const r = await fetch(`${SERVER_URL}/get_market`);
                 const items = await r.json();
                 if(items.length === 0) {
-                    grid.innerHTML = '<p class="text-center text-gray-500 mt-10 italic">Рынок пуст</p>';
+                    grid.innerHTML = '<p class="text-center text-gray-500 py-10 italic">На рынке пока пусто</p>';
                     return;
                 }
                 grid.innerHTML = items.map(i => `
@@ -175,14 +177,14 @@
                         <div class="flex items-center gap-3">
                             <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
                             <div>
-                                <p class="font-bold text-sm uppercase">${i.item_name}</p>
-                                <p class="text-[9px] text-gray-400 font-bold">LOT #${i.lot_id}</p>
+                                <p class="font-bold text-xs uppercase">${i.item_name}</p>
+                                <p class="text-[8px] text-gray-400 font-bold">LOT #${i.lot_id}</p>
                             </div>
                         </div>
                         <button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-5 py-2 rounded-2xl font-black text-xs active:scale-95 transition-transform">${i.price} 💎</button>
                     </div>
                 `).join('');
-            } catch(e) { grid.innerHTML = '<p class="text-center text-red-500">Ошибка сети</p>'; }
+            } catch(e) { grid.innerHTML = '<p class="text-center text-red-400 py-10">Сервер не доступен</p>'; }
         }
 
         async function buyItem(id) {
@@ -204,7 +206,7 @@
         }
 
         async function sellItem(name) {
-            const price = prompt("Укажите цену (💎):", "150");
+            const price = prompt("Укажите цену для маркета (💎):", "150");
             if(!price || isNaN(price)) return;
             try {
                 const res = await fetch(`${SERVER_URL}/list_on_market`, {
@@ -217,9 +219,9 @@
                     tg.HapticFeedback.notificationOccurred('success');
                     sync();
                 } else {
-                    tg.showAlert("Ошибка при продаже");
+                    tg.showAlert("Ошибка при выставлении");
                 }
-            } catch(e) { tg.showAlert("Нет связи с сервером"); }
+            } catch(e) { tg.showAlert("Сервер не доступен"); }
         }
 
         sync();
