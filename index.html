@@ -273,16 +273,21 @@
         function closeWinModal() { document.getElementById('win-modal').style.display = 'none'; isSpinning = false; sync(); }
 
         async function quickSell(item) {
-            try {
-                const res = await fetch(`${SERVER_URL}/sell_instantly`, {
-                    method: 'POST',
-                    headers: fetchHeaders,
-                    body: JSON.stringify({user_id: user.id, item_name: item})
-                });
-                const d = await res.json();
-                if(d.success) { closeWinModal(); showToast("Продано!", "💰"); }
-            } catch(e) {}
+    try {
+        const res = await fetch(`${SERVER_URL}/sell_instantly`, {
+            method: 'POST',
+            headers: fetchHeaders,
+            body: JSON.stringify({user_id: user.id, item_name: item})
+        });
+        const d = await res.json();
+        if(d.success) { 
+            showToast(`Продано за ${document.getElementById('sell-price').innerText} 💎`, "💰");
+            closeWinModal(); // Эта функция вызывает sync(), который обновит инвентарь
         }
+    } catch(e) {
+        showToast("Ошибка при продаже", "❌");
+    }
+}
 
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
@@ -369,3 +374,4 @@
     </script>
 </body>
 </html>
+
