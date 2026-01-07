@@ -125,9 +125,10 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        // Убедись, что этот URL совпадает с твоим NGROK
+        
+        // ПРОВЕРЬ: URL должен быть актуальным из ngrok
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
-        const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок" };
+        const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", photo_url: "" };
         
         let isSpinning = false;
         let currentTab = 0;
@@ -148,7 +149,6 @@
             if (isSpinning) return;
             currentTab = index;
             document.getElementById('main-slider').style.transform = `translateX(-${index * 100}vw)`;
-            // Обновляем прозрачность для 4 кнопок
             [0,1,2,3].forEach(i => { 
                 const btn = document.getElementById(`btn-${i}`);
                 if(btn) btn.style.opacity = (i === index) ? "1" : "0.4"; 
@@ -160,44 +160,82 @@
             tg.HapticFeedback.impactOccurred('light');
         }
 
-        async function loadTop() {
-    const list = document.getElementById('top-list');
-    try {
-        const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
-        const users = await res.json();
-        list.innerHTML = users.map((u, i) => {
-            // Если у пользователя есть фото, используем его, иначе — заглушку с буквой
-            const avatarHtml = u.photo_url 
-                ? `<img src="${u.photo_url}" class="w-10 h-10 rounded-full object-cover border border-white/20">`
-                : `<div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold text-xs border border-white/10">
-                    ${u.username ? u.username[0].toUpperCase() : '?'}
-                   </div>`;
+        // --- ФУНКЦИЯ ПРОДАЖИ (ИСПРАВЛЕНО) ---
+        async function sellItem(itemName) {
+            tg.HapticFeedback.impactOccurred('medium');
+            try {
+                const res = await fetch(`${SERVER_URL}/sell_instantly`, { 
+                    method: 'POST', 
+                    headers: fetchHeaders, 
+                    body: JSON.stringify({user_id: user.id, item_name: itemName}) 
+                });
+                const data = await res.json();
+                if(data.success) { 
+                    showToast("Продано!", "💰"); 
+                    sync(); // Обновляем инвентарь после продажи
+                }
+            } catch(e) {
+                showToast("Ошибка сервера", "📡");
+            }
+        }
 
-            let rankStyle = "";
-            if (i === 0) rankStyle = "border border-yellow-500/50 bg-yellow-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
-
-            return `
-                <div class="glass p-4 rounded-2xl flex justify-between items-center ${rankStyle} ${u.user_id == user.id ? 'ring-1 ring-blue-400' : ''}">
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm font-black ${i < 3 ? 'text-yellow-500' : 'text-gray-500'} w-5">#${i + 1}</span>
-                        ${avatarHtml}
-                        <div>
-                            <p class="text-sm font-bold truncate w-32">${u.username || 'Аноним'}</p>
-                            <p class="text-[9px] text-blue-400 font-bold uppercase tracking-wider">Level ${Math.floor(u.balance / 500) + 1}</p>
+        // --- СИНХРОНИЗАЦИЯ (ИСПРАВЛЕНО ДЛЯ АВАТАРОК) ---
+        async function sync() {
+            try {
+                const photoParam = user.photo_url ? `&photo_url=${encodeURIComponent(user.photo_url)}` : '';
+                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}${photoParam}`, { headers: fetchHeaders });
+                const d = await res.json();
+                
+                document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
+                
+                const grid = document.getElementById('inv-grid');
+                if (d.inventory.length === 0) {
+                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Рюкзак пуст</p>';
+                } else {
+                    grid.innerHTML = d.inventory.map(item => `
+                        <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30 flex flex-col items-center">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
+                            <p class="text-[10px] font-black uppercase mb-3 text-blue-300 truncate w-full">${item}</p>
+                            <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">Продать</button>
                         </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-black text-yellow-400 text-sm">${u.balance.toLocaleString()} 💎</p>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    } catch(e) { 
-        list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки топа</p>'; 
-    }
-}
+                    `).join('');
+                }
+            } catch(e) {}
+        }
 
-        // --- ЛОГИКА ОСТАЛЬНЫХ ФУНКЦИЙ ---
+        // --- ТОП (БЕЗ ИЗМЕНЕНИЙ) ---
+        async function loadTop() {
+            const list = document.getElementById('top-list');
+            try {
+                const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
+                const users = await res.json();
+                list.innerHTML = users.map((u, i) => {
+                    const avatarHtml = u.photo_url 
+                        ? `<img src="${u.photo_url}" class="w-10 h-10 rounded-full object-cover border border-white/20">`
+                        : `<div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold text-xs border border-white/10">${u.username ? u.username[0].toUpperCase() : '?'}</div>`;
+
+                    let rankStyle = i === 0 ? "border border-yellow-500/50 bg-yellow-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]" : "";
+
+                    return `
+                        <div class="glass p-4 rounded-2xl flex justify-between items-center ${rankStyle} ${u.user_id == user.id ? 'ring-1 ring-blue-400' : ''}">
+                            <div class="flex items-center gap-4">
+                                <span class="text-sm font-black ${i < 3 ? 'text-yellow-500' : 'text-gray-500'} w-5">#${i + 1}</span>
+                                ${avatarHtml}
+                                <div>
+                                    <p class="text-sm font-bold truncate w-32">${u.username || 'Аноним'}</p>
+                                    <p class="text-[9px] text-blue-400 font-bold uppercase tracking-wider">Level ${Math.floor(u.balance / 500) + 1}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-black text-yellow-400 text-sm">${u.balance.toLocaleString()} 💎</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch(e) { list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки</p>'; }
+        }
+
+        // --- ОСТАЛЬНЫЕ ФУНКЦИИ ---
         function openCasePreview() {
             if (isSpinning) return;
             const modal = document.getElementById('case-preview-modal');
@@ -251,16 +289,6 @@
             } catch(e) {}
         }
 
-        async function sync() {
-            try {
-                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}`, { headers: fetchHeaders });
-                const d = await res.json();
-                document.getElementById('balance').innerText = d.balance + " 💎";
-                const grid = document.getElementById('inv-grid');
-                grid.innerHTML = d.inventory.map(item => `<div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2"><p class="text-[10px] font-black uppercase mb-3 text-blue-300 truncate">${item}</p><button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">Продать</button></div>`).join('');
-            } catch(e) {}
-        }
-
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
             try {
@@ -284,4 +312,5 @@
     </script>
 </body>
 </html>
+
 
