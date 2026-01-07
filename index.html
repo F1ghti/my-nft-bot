@@ -14,15 +14,12 @@
         .nav-btn { opacity: 0.4; transition: 0.3s; font-size: 24px; }
         .nav-btn.active { opacity: 1; filter: drop-shadow(0 0 8px #3b82f6); }
         
-        /* Рулетка */
         .roulette-wrapper { position: relative; width: 100%; height: 120px; overflow: hidden; display: none; margin-bottom: 20px; }
         .roulette-track { display: flex; position: absolute; left: 0; transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); }
-        .roulette-item { width: 100px; height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05); }
+        .roulette-item { width: 100px; height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #3b82f6; z-index: 20; box-shadow: 0 0 15px #3b82f6; transform: translateX(-50%); }
 
-        /* Модалка содержимого */
-        #case-modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
-
+        #case-modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
         .notification-active { color: #facc15 !important; filter: drop-shadow(0 0 10px #facc15); animation: ring 1.5s infinite; opacity: 1 !important; }
         @keyframes ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(15deg); } 30% { transform: rotate(-15deg); } }
     </style>
@@ -37,17 +34,17 @@
             </div>
         </div>
         <div class="flex items-center gap-4">
-            <div id="notif-bell" onclick="checkNotifications()" class="text-xl opacity-50 cursor-pointer">🔔</div>
+            <div id="notif-bell" onclick="checkNotifications()" class="text-xl cursor-pointer transition-all opacity-80">🔔</div>
             <div class="text-right"><p id="balance" class="text-yellow-400 font-black text-xl">0 💎</p></div>
         </div>
     </div>
 
-    <div id="case-modal" class="flex-col items-center justify-center p-6">
+    <div id="case-modal" class="flex flex-col items-center justify-center p-6">
         <div class="glass w-full max-w-sm rounded-[40px] p-8 flex flex-col items-center relative">
             <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 text-xl">✕</button>
-            <h3 class="text-xl font-black uppercase italic mb-6 text-blue-400">Содержимое кейса</h3>
+            <h3 class="text-xl font-black uppercase italic mb-6 text-blue-400 text-center">Содержимое кейса</h3>
             <div id="modal-items" class="grid grid-cols-2 gap-4 w-full mb-8"></div>
-            <button onclick="startSpin(); closeModal();" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all">ОТКРЫТЬ ЗА 100 💎</button>
+            <button onclick="startSpin(); closeModal();" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all">ОТКРЫТЬ 100 💎</button>
         </div>
     </div>
 
@@ -57,22 +54,32 @@
                 <div class="pointer"></div>
                 <div id="roulette-track" class="roulette-track"></div>
             </div>
-
-            <div id="case-ui" class="flex flex-col items-center py-10">
-                <div class="relative group cursor-pointer" onclick="openModal()">
-                    <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-20 group-active:opacity-40"></div>
-                    <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-48 h-48 mb-6 drop-shadow-2xl relative">
-                    <div class="absolute bottom-4 right-0 bg-blue-600 p-2 rounded-full shadow-lg border-2 border-white/10">🔍</div>
+            <div id="case-ui" class="flex flex-col items-center py-6">
+                <div class="relative group cursor-pointer mb-6" onclick="openModal()">
+                    <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-10"></div>
+                    <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-48 h-48 drop-shadow-2xl relative">
+                    <div class="absolute bottom-2 right-2 bg-blue-600 p-2 rounded-full border-2 border-white/10 shadow-lg">🔍</div>
                 </div>
-                <h2 class="text-3xl font-black italic uppercase tracking-tighter mb-2">Cyber Case</h2>
-                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em] mb-6">Нажми на кейс, чтобы заглянуть внутрь</p>
+                <h2 class="text-3xl font-black italic uppercase mb-2">Cyber Case</h2>
                 <button onclick="startSpin()" class="bg-blue-600 px-16 py-4 rounded-full text-2xl font-black shadow-xl active:scale-95 transition-all">100 💎</button>
             </div>
         </div>
         
-        <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Marketplace</h2><div id="market-list" class="flex flex-col gap-3"></div></div>
-        <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Collection</h2><div id="inv-grid" class="grid grid-cols-2 gap-4"></div></div>
-        <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Top Players</h2><div id="top-list" class="glass rounded-3xl p-4 space-y-4"></div></div>
+        <div class="tab-content">
+            <h2 class="text-2xl font-black mb-6 uppercase italic">Marketplace</h2>
+            <div id="market-list" class="flex flex-col gap-3"></div>
+        </div>
+
+        <div class="tab-content">
+            <h2 class="text-2xl font-black mb-6 uppercase italic">Collection</h2>
+            <div id="inv-grid" class="grid grid-cols-2 gap-4"></div>
+        </div>
+
+        <div class="tab-content">
+            <h2 class="text-2xl font-black mb-6 uppercase italic">Top Players</h2>
+            <div id="top-list" class="glass rounded-3xl p-5 space-y-4">
+                </div>
+        </div>
     </div>
 
     <div class="fixed bottom-6 left-6 right-6 h-20 glass rounded-[35px] flex justify-around items-center">
@@ -96,33 +103,33 @@
 
         document.getElementById('u-avatar').src = user.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`;
 
+        async function api(path, body = null) {
+            try {
+                const res = await fetch(window.location.origin + path, {
+                    method: body ? 'POST' : 'GET',
+                    headers: {"Content-Type": "application/json"},
+                    body: body ? JSON.stringify(body) : null
+                });
+                return await res.json();
+            } catch (e) { console.error(e); return null; }
+        }
+
         function openModal() {
-            const modal = document.getElementById('case-modal');
-            const list = document.getElementById('modal-items');
-            modal.style.display = 'flex';
-            list.innerHTML = itemsList.map(item => `
+            document.getElementById('case-modal').style.display = 'flex';
+            document.getElementById('modal-items').innerHTML = itemsList.map(item => `
                 <div class="bg-white/5 p-3 rounded-2xl text-center border border-white/5">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item.name}" class="w-10 h-10 mx-auto mb-1">
-                    <p class="text-[9px] font-bold truncate">${item.name}</p>
-                    <p class="text-[7px] text-blue-400 uppercase">${item.rare}</p>
+                    <p class="text-[9px] font-bold truncate uppercase">${item.name}</p>
+                    <p class="text-[7px] text-blue-400 uppercase font-bold">${item.rare}</p>
                 </div>
             `).join('');
         }
 
         function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
 
-        async function api(path, body = null) {
-            const res = await fetch(window.location.origin + path, {
-                method: body ? 'POST' : 'GET',
-                headers: {"Content-Type": "application/json"},
-                body: body ? JSON.stringify(body) : null
-            });
-            return res.json();
-        }
-
         async function startSpin() {
             const res = await api('/open_case', {user_id: user.id});
-            if(!res.success) return tg.showAlert(res.error);
+            if(!res || !res.success) return tg.showAlert(res?.error || "Ошибка");
 
             const box = document.getElementById('roulette-box');
             const track = document.getElementById('roulette-track');
@@ -156,12 +163,17 @@
         }
 
         async function sync() {
-            const d = await api(`/get_user?user_id=${user.id}&username=${user.first_name}`);
-            if(lastBalance > 0 && d.balance > lastBalance) document.getElementById('notif-bell').classList.add('notification-active');
+            const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}`);
+            if(!d) return;
+
+            if(lastBalance > 0 && d.balance > lastBalance) {
+                document.getElementById('notif-bell').classList.add('notification-active');
+            }
             lastBalance = d.balance;
             document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
 
+            // Рендер инвентаря
             document.getElementById('inv-grid').innerHTML = (d.inventory || []).map(item => `
                 <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
@@ -170,40 +182,54 @@
                 </div>
             `).join('') || '<p class="col-span-2 text-center opacity-50 py-10">Пусто</p>';
 
+            // Рендер маркета
             const m = await api('/get_market');
-            document.getElementById('market-list').innerHTML = m.map(lot => `
-                <div class="glass p-3 rounded-2xl flex justify-between items-center border border-white/5">
-                    <div class="flex items-center gap-3">
-                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${lot.item_name}" class="w-10 h-10">
-                        <div><p class="text-xs font-bold leading-none">${lot.item_name}</p><p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p></div>
+            if(m) {
+                document.getElementById('market-list').innerHTML = m.map(lot => `
+                    <div class="glass p-3 rounded-2xl flex justify-between items-center border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${lot.item_name}" class="w-10 h-10">
+                            <div><p class="text-xs font-bold leading-none">${lot.item_name}</p><p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p></div>
+                        </div>
+                        ${lot.seller_id == user.id ? 
+                            `<button onclick="cancelLot(${lot.lot_id})" class="bg-red-500/20 text-red-400 text-[10px] px-4 py-2 rounded-xl border border-red-500/50">СНЯТЬ</button>` : 
+                            `<button onclick="buyLot(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs">${lot.price} 💎</button>`
+                        }
                     </div>
-                    ${lot.seller_id == user.id ? 
-                        `<button onclick="cancelLot(${lot.lot_id})" class="bg-red-500/20 text-red-400 text-[10px] px-4 py-2 rounded-xl border border-red-500/50">СНЯТЬ</button>` : 
-                        `<button onclick="buyLot(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs">${lot.price} 💎</button>`
-                    }
-                </div>
-            `).join('') || '<p class="text-center opacity-50 py-10">Рынок пуст</p>';
+                `).join('') || '<p class="text-center opacity-50 py-10">Рынок пуст</p>';
+            }
+
+            // Рендер ТОПА
+            const top = await api('/get_leaderboard');
+            if(top) {
+                document.getElementById('top-list').innerHTML = top.map((u, i) => `
+                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span class="text-sm font-medium"><span class="opacity-40 mr-2">${i+1}.</span>${u.username}</span>
+                        <span class="text-yellow-400 font-black">${u.balance.toLocaleString()} 💎</span>
+                    </div>
+                `).join('') || '<p class="text-center opacity-50">Загрузка...</p>';
+            }
         }
 
         function checkNotifications() {
             const b = document.getElementById('notif-bell');
             if(b.classList.contains('notification-active')) {
-                tg.showAlert("💰 Ваш лот купили!");
+                tg.showAlert("💰 Ваш предмет успешно купили!");
                 b.classList.remove('notification-active');
-            } else tg.showAlert("Нет новых уведомлений.");
+            } else tg.showAlert("Новых уведомлений нет.");
         }
 
         function sellItem(i) {
-            const p = prompt(`Цена для ${i}:`, "500");
-            if(p > 0) api('/list_on_market', {user_id: user.id, item: i, price: parseInt(p)}).then(() => sync());
+            const p = prompt(`Введите цену для ${i}:`, "500");
+            if(p && p > 0) api('/list_on_market', {user_id: user.id, item: i, price: parseInt(p)}).then(() => sync());
         }
 
         function cancelLot(id) { if(confirm("Снять с продажи?")) api('/cancel_lot', {user_id: user.id, lot_id: id}).then(() => sync()); }
         
         function buyLot(id) {
             api('/buy_from_market', {user_id: user.id, lot_id: id}).then(res => {
-                if(res.success) { tg.HapticFeedback.impactOccurred('medium'); sync(); }
-                else tg.showAlert(res.error);
+                if(res && res.success) { tg.HapticFeedback.impactOccurred('medium'); sync(); }
+                else tg.showAlert(res?.error || "Ошибка");
             });
         }
 
