@@ -14,7 +14,12 @@
         .nav-btn { opacity: 0.4; transition: 0.3s; font-size: 24px; }
         .nav-btn.active { opacity: 1; filter: drop-shadow(0 0 8px #3b82f6); }
         
-        /* Анимация колокольчика */
+        /* Рулетка */
+        .roulette-wrapper { position: relative; width: 100%; height: 120px; overflow: hidden; display: none; margin-bottom: 20px; }
+        .roulette-track { display: flex; position: absolute; left: 0; transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); }
+        .roulette-item { width: 100px; height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05); }
+        .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #3b82f6; z-index: 20; box-shadow: 0 0 15px #3b82f6; transform: translateX(-50%); }
+
         .notification-active { color: #facc15 !important; filter: drop-shadow(0 0 10px #facc15); animation: ring 1.5s infinite; opacity: 1 !important; }
         @keyframes ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(15deg); } 30% { transform: rotate(-15deg); } }
     </style>
@@ -24,23 +29,35 @@
         <div class="flex items-center gap-3">
             <img id="u-avatar" src="" class="w-10 h-10 rounded-full border-2 border-blue-500/50 object-cover bg-slate-800">
             <div>
-                <p id="u-name" class="font-bold text-sm leading-none italic">Player</p>
-                <p class="text-[9px] text-blue-400 font-bold uppercase mt-1 tracking-wider">Verified Trader</p>
+                <p id="u-name" class="font-bold text-sm leading-none italic">Загрузка...</p>
+                <p class="text-[9px] text-blue-400 font-bold uppercase mt-1">Verified Trader</p>
             </div>
         </div>
         <div class="flex items-center gap-4">
-            <div id="notif-bell" onclick="checkNotifications()" class="text-xl opacity-50 cursor-pointer transition-all">🔔</div>
+            <div id="notif-bell" onclick="checkNotifications()" class="text-xl opacity-50 cursor-pointer">🔔</div>
             <div class="text-right"><p id="balance" class="text-yellow-400 font-black text-xl">0 💎</p></div>
         </div>
     </div>
 
     <div id="main-slider">
         <div class="tab-content flex flex-col items-center">
-            <div id="case-display" class="flex flex-col items-center py-10">
-                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-44 h-44 mb-6 drop-shadow-2xl">
-                <button onclick="startSpin()" class="bg-blue-600 px-16 py-4 rounded-full text-2xl font-black shadow-xl active:scale-95 transition-all">100 💎</button>
+            <div id="roulette-box" class="roulette-wrapper glass rounded-3xl">
+                <div class="pointer"></div>
+                <div id="roulette-track" class="roulette-track"></div>
+            </div>
+
+            <div id="case-ui" class="flex flex-col items-center">
+                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=case8" class="w-40 h-40 mb-4 drop-shadow-2xl">
+                <h2 class="text-2xl font-black italic uppercase tracking-tighter mb-2">Cyber Case</h2>
+                <button onclick="startSpin()" class="bg-blue-600 px-16 py-3 rounded-full text-xl font-black shadow-xl active:scale-95 transition-all mb-8">100 💎</button>
+                
+                <div class="w-full">
+                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-3 tracking-widest text-center">Возможный дроп:</p>
+                    <div id="case-content" class="flex justify-center gap-2 overflow-x-auto pb-4"></div>
+                </div>
             </div>
         </div>
+
         <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Marketplace</h2><div id="market-list" class="flex flex-col gap-3"></div></div>
         <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Collection</h2><div id="inv-grid" class="grid grid-cols-2 gap-4"></div></div>
         <div class="tab-content"><h2 class="text-2xl font-black mb-6 uppercase italic">Top Players</h2><div id="top-list" class="glass rounded-3xl p-4 space-y-4"></div></div>
@@ -55,16 +72,18 @@
 
     <script>
         const tg = window.Telegram.WebApp;
-        const user = tg.initDataUnsafe.user || { id: 877067120, first_name: "Player", photo_url: "" };
+        const user = tg.initDataUnsafe.user || { id: 0, first_name: "Player" };
+        const itemsList = ["Cyber Cat", "Neon Knight", "Glitch Void", "Diamond Dragon", "Pixel God"];
         let lastBalance = 0;
 
-        // Настройка аватара (ТГ или DiceBear)
-        const avatarElement = document.getElementById('u-avatar');
-        if (user.photo_url) {
-            avatarElement.src = user.photo_url;
-        } else {
-            avatarElement.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`;
-        }
+        // Инициализация аватара и содержимого кейса
+        document.getElementById('u-avatar').src = user.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`;
+        document.getElementById('case-content').innerHTML = itemsList.map(item => `
+            <div class="glass min-w-[70px] p-2 rounded-xl text-center">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-8 h-8 mx-auto">
+                <p class="text-[7px] mt-1 font-bold truncate">${item}</p>
+            </div>
+        `).join('');
 
         async function api(path, body = null) {
             const res = await fetch(window.location.origin + path, {
@@ -75,118 +94,105 @@
             return res.json();
         }
 
-        // Проверка уведомлений при клике на колокольчик
-        function checkNotifications() {
-            const bell = document.getElementById('notif-bell');
-            if (bell.classList.contains('notification-active')) {
-                tg.showAlert("🎉 Поздравляем! Ваш предмет купили. Баланс пополнен!");
-                bell.classList.remove('notification-active');
-            } else {
-                tg.showAlert("Новых уведомлений нет. Здесь появится сигнал, если купят ваш лот!");
+        async function startSpin() {
+            const res = await api('/open_case', {user_id: user.id});
+            if(!res.success) return tg.showAlert(res.error);
+
+            const box = document.getElementById('roulette-box');
+            const track = document.getElementById('roulette-track');
+            const ui = document.getElementById('case-ui');
+
+            ui.style.display = 'none';
+            box.style.display = 'block';
+
+            // Генерируем ленту для рулетки (45 элементов)
+            let itemsHTML = "";
+            for(let i=0; i<45; i++) {
+                const item = (i === 40) ? res.item : itemsList[Math.floor(Math.random() * itemsList.length)];
+                itemsHTML += `<div class="roulette-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16"></div>`;
             }
+            track.innerHTML = itemsHTML;
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0px)';
+
+            setTimeout(() => {
+                track.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+                // Высчитываем центр: (индекс * ширина) - (половина экрана) + (половина айтема)
+                const shift = (40 * 100) - (window.innerWidth / 2) + 50;
+                track.style.transform = `translateX(-${shift}px)`;
+            }, 50);
+
+            setTimeout(() => {
+                tg.HapticFeedback.notificationOccurred('success');
+                tg.showPopup({ title: '🎉 Выигрыш!', message: `Вы получили: ${res.item}`, buttons: [{type: 'ok'}] });
+                box.style.display = 'none';
+                ui.style.display = 'flex';
+                sync();
+            }, 4500);
         }
 
         async function sync() {
             const d = await api(`/get_user?user_id=${user.id}&username=${user.first_name}`);
-            
-            // Если баланс увеличился сам по себе (продажа)
-            if(lastBalance > 0 && d.balance > lastBalance) {
-                document.getElementById('notif-bell').classList.add('notification-active');
-                tg.HapticFeedback.notificationOccurred('success');
-            }
-            
+            if(lastBalance > 0 && d.balance > lastBalance) document.getElementById('notif-bell').classList.add('notification-active');
             lastBalance = d.balance;
             document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
             document.getElementById('u-name').innerText = user.first_name;
 
-            // Рендер Инвентаря
-            const grid = document.getElementById('inv-grid');
-            grid.innerHTML = (d.inventory || []).map(item => `
+            // Рендер инвентаря
+            document.getElementById('inv-grid').innerHTML = (d.inventory || []).map(item => `
                 <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
                     <p class="text-[10px] font-bold uppercase truncate">${item}</p>
-                    <button onclick="sellItem('${item}')" class="mt-2 bg-blue-600 text-[10px] px-3 py-1.5 rounded-full font-bold w-full active:scale-90 transition-transform">ПРОДАТЬ</button>
+                    <button onclick="sellItem('${item}')" class="mt-2 bg-blue-600 text-[10px] px-3 py-1.5 rounded-full font-bold w-full">ПРОДАТЬ</button>
                 </div>
-            `).join('') || '<p class="col-span-2 text-center opacity-50 py-10">Инвентарь пуст</p>';
+            `).join('') || '<p class="col-span-2 text-center opacity-50 py-10">Пусто</p>';
 
-            // Рендер Маркета
-            const mData = await api('/get_market');
-            document.getElementById('market-list').innerHTML = mData.map(lot => {
-                const isMine = lot.seller_id == user.id;
-                return `
-                <div class="glass p-3 rounded-2xl flex justify-between items-center border border-white/5">
+            // Рендер маркета
+            const m = await api('/get_market');
+            document.getElementById('market-list').innerHTML = m.map(lot => `
+                <div class="glass p-3 rounded-2xl flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${lot.item_name}" class="w-10 h-10">
-                        <div>
-                            <p class="text-xs font-bold leading-none">${lot.item_name}</p>
-                            <p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p>
-                        </div>
+                        <div><p class="text-xs font-bold leading-none">${lot.item_name}</p><p class="text-[8px] opacity-40 mt-1 uppercase">От: ${lot.seller_name}</p></div>
                     </div>
-                    ${isMine ? 
-                        `<button onclick="cancelLot(${lot.lot_id})" class="bg-red-500/20 text-red-400 text-[10px] px-4 py-2 rounded-xl border border-red-500/50 active:scale-90 transition-transform">СНЯТЬ</button>` : 
-                        `<button onclick="buyLot(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs active:scale-90 transition-transform">${lot.price} 💎</button>`
+                    ${lot.seller_id == user.id ? 
+                        `<button onclick="cancelLot(${lot.lot_id})" class="bg-red-500/20 text-red-400 text-[10px] px-4 py-2 rounded-xl border border-red-500/50">СНЯТЬ</button>` : 
+                        `<button onclick="buyLot(${lot.lot_id})" class="bg-yellow-500 text-black font-black px-4 py-2 rounded-xl text-xs">${lot.price} 💎</button>`
                     }
-                </div>`;
-            }).join('') || '<p class="text-center opacity-50 py-10">Рынок пуст</p>';
-
-            const top = await api('/get_leaderboard');
-            document.getElementById('top-list').innerHTML = top.map((u, i) => `
-                <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span class="${u.username === user.first_name ? 'text-blue-400 font-bold' : ''}">${i+1}. ${u.username}</span>
-                    <span class="text-yellow-400 font-black">${u.balance.toLocaleString()} 💎</span>
                 </div>
-            `).join('');
+            `).join('') || '<p class="text-center opacity-50 py-10">Рынок пуст</p>';
         }
 
-        function sellItem(item) {
-            const p = prompt(`Введите цену продажи для ${item}:`, "500");
-            if (p && p > 0) {
-                api('/list_on_market', {user_id: user.id, item, price: parseInt(p)}).then(res => {
-                    if(res.success) sync();
-                    else tg.showAlert(res.error);
-                });
-            }
+        function checkNotifications() {
+            const b = document.getElementById('notif-bell');
+            if(b.classList.contains('notification-active')) {
+                tg.showAlert("💰 Ваш лот купили!");
+                b.classList.remove('notification-active');
+            } else tg.showAlert("Нет новых уведомлений.");
         }
 
-        function cancelLot(id) {
-            if(confirm("Вернуть предмет в инвентарь?")) {
-                api('/cancel_lot', {user_id: user.id, lot_id: id}).then(() => sync());
-            }
+        function sellItem(i) {
+            const p = prompt(`Цена для ${i}:`, "500");
+            if(p > 0) api('/list_on_market', {user_id: user.id, item: i, price: parseInt(p)}).then(() => sync());
         }
 
+        function cancelLot(id) { if(confirm("Снять с продажи?")) api('/cancel_lot', {user_id: user.id, lot_id: id}).then(() => sync()); }
+        
         function buyLot(id) {
             api('/buy_from_market', {user_id: user.id, lot_id: id}).then(res => {
-                if(res.success) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                    tg.showAlert("✅ Предмет добавлен в коллекцию!"); 
-                    sync(); 
-                } else tg.showAlert(res.error);
+                if(res.success) { tg.HapticFeedback.impactOccurred('medium'); sync(); }
+                else tg.showAlert(res.error);
             });
-        }
-
-        async function startSpin() {
-            const res = await api('/open_case', {user_id: user.id});
-            if(res.success) {
-                tg.HapticFeedback.impactOccurred('heavy');
-                tg.showAlert("🔥 Вы получили: " + res.item); 
-                sync(); 
-            } else tg.showAlert(res.error);
         }
 
         function goToTab(idx) {
             document.getElementById('main-slider').style.transform = `translateX(-${idx * 100}vw)`;
             document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-            
-            // Если переходим на вкладку рынка или инвентаря, сбрасываем визуальный эффект колокольчика
-            if(idx === 1 || idx === 2) {
-                // Но лучше оставить сброс только при клике на сам колокольчик (функция выше)
-            }
             sync();
         }
 
-        setInterval(sync, 10000); 
-        window.onload = sync;
-        tg.expand();
+        setInterval(sync, 15000);
+        window.onload = () => { sync(); tg.expand(); };
     </script>
 </body>
 </html>
