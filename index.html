@@ -54,7 +54,8 @@
 
     <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2 shadow-xl shrink-0">
         <div class="flex items-center gap-3">
-            <div id="u-pic" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg uppercase">?</div>
+            <img id="u-pic-img" src="" class="w-10 h-10 rounded-full border-2 border-blue-500 hidden">
+            <div id="u-pic-placeholder" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold shadow-lg uppercase">?</div>
             <div>
                 <p id="u-name" class="text-sm font-bold truncate w-24 italic">Игрок</p>
                 <p class="text-[9px] text-blue-400 font-bold uppercase tracking-tighter">Elite Member</p>
@@ -94,12 +95,21 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        // ВАЖНО: Убедись, что этот URL совпадает с твоим ngrok
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
-        const user = tg.initDataUnsafe.user || { id: 123, first_name: "Игрок" };
+        const user = tg.initDataUnsafe.user || { id: 123, first_name: "Игрок", username: "player", photo_url: "" };
         let isSpinning = false;
 
-        document.getElementById('u-name').innerText = user.first_name;
-        document.getElementById('u-pic').innerText = user.first_name[0];
+        // Установка данных профиля
+        document.getElementById('u-name').innerText = user.first_name || user.username;
+        if (user.photo_url) {
+            const img = document.getElementById('u-pic-img');
+            img.src = user.photo_url;
+            img.classList.remove('hidden');
+            document.getElementById('u-pic-placeholder').classList.add('hidden');
+        } else {
+            document.getElementById('u-pic-placeholder').innerText = (user.first_name || "U")[0].toUpperCase();
+        }
 
         function showToast(msg, icon = '✨') {
             const t = document.getElementById('toast');
@@ -122,8 +132,11 @@
 
         async function sync() {
             try {
-                const r = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}`);
+                const name = encodeURIComponent(user.first_name || user.username);
+                const photo = encodeURIComponent(user.photo_url || "");
+                const r = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${name}&photo_url=${photo}`);
                 const d = await r.json();
+                
                 document.getElementById('balance').innerText = d.balance + " 💎";
                 const grid = document.getElementById('inv-grid');
                 if(!d.inventory || d.inventory.length === 0) {
@@ -134,7 +147,7 @@
                     <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
                         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
                         <p class="text-[10px] font-black truncate uppercase mb-3 text-blue-300">${item}</p>
-                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">Продать</button>
+                        <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase">На маркет</button>
                     </div>
                 `).join('');
             } catch(e) {}
@@ -197,7 +210,6 @@
             } catch(e) {}
         }
 
-        // ОБНОВЛЕННЫЙ МАРКЕТ
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
             try {
@@ -208,14 +220,19 @@
                     return;
                 }
                 grid.innerHTML = items.map(i => {
-                    const isMine = i.seller_id === user.id;
+                    const isMine = Number(i.seller_id) === Number(user.id);
+                    const sellerImg = i.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${i.username}`;
+                    
                     return `
                         <div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 ${isMine ? 'border-blue-500' : 'border-yellow-500'} mb-2">
                             <div class="flex items-center gap-3">
-                                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
+                                <div class="relative">
+                                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-12 h-12">
+                                    <img src="${sellerImg}" class="w-5 h-5 rounded-full absolute -bottom-1 -right-1 border border-[#0b1120] shadow-sm">
+                                </div>
                                 <div>
                                     <p class="font-black text-[10px] uppercase">${i.item_name}</p>
-                                    <p class="text-[7px] text-gray-500 uppercase tracking-tighter">${isMine ? '🌟 Твой лот' : '👤 Игрок: ' + i.seller_id}</p>
+                                    <p class="text-[8px] text-blue-400 font-bold italic">@${i.username} ${isMine ? '(Вы)' : ''}</p>
                                 </div>
                             </div>
                             ${isMine ? 
@@ -229,6 +246,7 @@
         }
 
         async function buyItem(id) {
+            tg.HapticFeedback.impactOccurred('medium');
             try {
                 const res = await fetch(`${SERVER_URL}/buy_from_market`, {
                     method: 'POST',
@@ -242,7 +260,7 @@
         }
 
         async function cancelLot(id) {
-            if(!confirm("Снять с продажи?")) return;
+            tg.HapticFeedback.notificationOccurred('warning');
             try {
                 const res = await fetch(`${SERVER_URL}/cancel_lot`, {
                     method: 'POST',
@@ -254,8 +272,8 @@
         }
 
         async function sellItem(name) {
-            const price = prompt("Цена (💎):", "150");
-            if(!price || isNaN(price)) return;
+            const price = prompt("Введите цену продажи (💎):", "150");
+            if(!price || isNaN(price) || parseInt(price) <= 0) return;
             try {
                 const res = await fetch(`${SERVER_URL}/list_on_market`, {
                     method: 'POST',
