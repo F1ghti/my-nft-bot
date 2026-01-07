@@ -116,6 +116,7 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         
+        // ВАЖНО: Проверь, что этот URL совпадает с тем, что выдал ngrok!
         const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
         const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
@@ -130,41 +131,60 @@
             } catch(e) { console.error("API Error:", e); return {success: false}; }
         }
 
-        // МЕНЮ ПРЕДМЕТА: Выбор между быстрой продажей и маркетом
-        async function openItemMenu(name) {
-            tg.HapticFeedback.impactOccurred('light');
-            const choice = confirm(`Предмет: ${name}\n\nОК - Продать боту мгновенно (80% цены)\nОТМЕНА - Выставить на Маркетплейс`);
+        // НОВАЯ ФУНКЦИЯ УПРАВЛЕНИЯ ПРЕДМЕТОМ
+        function openItemMenu(name) {
+            tg.HapticFeedback.impactOccurred('medium');
             
-            if (choice) {
-                // Мгновенная продажа
-                const res = await api('/sell_instantly', {user_id: user.id, item_name: name});
-                if(res.success) {
-                    tg.showConfirm("Предмет продан боту!");
-                    sync();
-                }
-            } else {
-                // Маркет
-                const price = prompt(`Введите цену продажи для ${name}:`, "150");
-                if (price && !isNaN(price) && parseInt(price) > 0) {
-                    const res = await api('/list_on_market', {user_id: user.id, item_name: name, price: parseInt(price)});
+            tg.showPopup({
+                title: 'Управление NFT',
+                message: `Что вы хотите сделать с ${name}?`,
+                buttons: [
+                    {id: 'to_market', type: 'default', text: 'Выставить на маркет'},
+                    {id: 'to_bot', type: 'destructive', text: 'Продать боту (быстро)'},
+                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
+                ]
+            }, async (btnId) => {
+                if (btnId === 'to_bot') {
+                    const res = await api('/sell_instantly', {user_id: user.id, item_name: name});
                     if(res.success) {
-                        tg.showConfirm(`Выставлено на маркет за ${price} 💎`);
+                        tg.showAlert("✅ Продано боту!");
                         sync();
                     }
+                } else if (btnId === 'to_market') {
+                    // Используем setTimeout, чтобы prompt не конфликтовал с закрытием popup
+                    setTimeout(() => {
+                        const price = prompt(`Введите цену (💎) за которую хотите продать ${name}:`, "200");
+                        if (price && !isNaN(price) && parseInt(price) > 0) {
+                            processMarketListing(name, parseInt(price));
+                        }
+                    }, 100);
                 }
+            });
+        }
+
+        async function processMarketListing(name, price) {
+            const res = await api('/list_on_market', {user_id: user.id, item_name: name, price: price});
+            if(res.success) {
+                tg.showAlert(`🚀 Предмет ${name} выставлен на маркет за ${price} 💎`);
+                sync();
+            } else {
+                tg.showAlert("❌ Ошибка при выставлении на маркет");
             }
         }
 
         async function buyItem(lotId, price) {
-            if(!confirm(`Купить этот предмет за ${price} 💎?`)) return;
-            const res = await api('/buy_item', {user_id: user.id, lot_id: lotId});
-            if(res.success) {
-                tg.showConfirm("Поздравляем! Предмет в рюкзаке.");
-                sync();
-                loadMarket();
-            } else {
-                alert(res.error || "Ошибка покупки");
-            }
+            tg.showConfirm(`Купить этот предмет за ${price} 💎?`, async (yes) => {
+                if (yes) {
+                    const res = await api('/buy_item', {user_id: user.id, lot_id: lotId});
+                    if(res.success) {
+                        tg.showAlert("🎉 Поздравляем! Предмет куплен и добавлен в рюкзак.");
+                        sync();
+                        loadMarket();
+                    } else {
+                        tg.showAlert("❌ " + (res.error || "Ошибка покупки"));
+                    }
+                }
+            });
         }
 
         async function sync() {
@@ -184,10 +204,10 @@
                 grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-20 italic">Рюкзак пуст</p>';
             } else {
                 grid.innerHTML = d.inventory.map(item => `
-                    <div onclick="openItemMenu('${item}')" class="glass p-4 rounded-[30px] text-center border-b-4 border-blue-500/30 active:scale-95 transition-all">
+                    <div onclick="openItemMenu('${item}')" class="glass p-4 rounded-[30px] text-center border-b-4 border-blue-500/30 active:scale-90 transition-all cursor-pointer">
                         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-20 h-20 mx-auto mb-2">
                         <p class="text-[10px] font-black uppercase mb-1 truncate">${item}</p>
-                        <p class="text-[8px] text-blue-400 font-bold">УПРАВЛЯТЬ</p>
+                        <p class="text-[8px] text-blue-400 font-bold uppercase">Меню</p>
                     </div>
                 `).join('');
             }
@@ -217,6 +237,7 @@
             }
         }
 
+        // --- Остальные функции (Spin, Preview, Tabs) ---
         async function showPreview() {
             const info = await api('/get_case_info');
             const list = document.getElementById('preview-list');
@@ -224,7 +245,6 @@
                 <div class="bg-white/5 p-3 rounded-2xl text-center border border-white/5">
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.name}" class="w-12 h-12 mx-auto mb-1">
                     <p class="text-[8px] font-bold uppercase truncate">${i.name}</p>
-                    <p class="text-[7px] text-blue-400 font-bold">${i.rarity}</p>
                 </div>
             `).join('');
             document.getElementById('preview-modal').style.display = 'flex';
@@ -232,12 +252,7 @@
 
         async function startSpin() {
             const res = await api('/open_case', {user_id: user.id});
-            if(!res.success) {
-                tg.HapticFeedback.notificationOccurred('error');
-                alert("Недостаточно 💎");
-                return;
-            }
-
+            if(!res.success) { return alert("Мало 💎"); }
             tg.HapticFeedback.impactOccurred('heavy');
             const wrap = document.getElementById('roulette-wrap');
             const list = document.getElementById('roulette-list');
@@ -245,55 +260,40 @@
             list.innerHTML = '';
             list.style.transition = 'none';
             list.style.transform = 'translateX(0)';
-
             const info = await api('/get_case_info');
             const itemsPool = info.items.map(i => i.name);
-            
             for(let i=0; i<50; i++) {
                 const name = (i === 40) ? res.item : itemsPool[Math.floor(Math.random()*itemsPool.length)];
-                list.innerHTML += `<div class="min-w-[120px] h-[120px] glass m-[5px] rounded-3xl flex items-center justify-center shrink-0">
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-20 h-20">
-                </div>`;
+                list.innerHTML += `<div class="min-w-[120px] h-[120px] glass m-[5px] rounded-3xl flex items-center justify-center shrink-0"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-20 h-20"></div>`;
             }
-
             setTimeout(() => {
                 list.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.05, 1)';
                 const shift = (40 * 130) - (window.innerWidth / 2) + 65;
                 list.style.transform = `translateX(-${shift}px)`;
             }, 50);
-
             setTimeout(() => {
                 wrap.style.display = 'none';
                 document.getElementById('win-modal').style.display = 'flex';
                 document.getElementById('win-name').innerText = res.item;
                 document.getElementById('win-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${res.item}" class="w-40 h-40 mx-auto">`;
-                tg.HapticFeedback.notificationOccurred('success');
             }, 4500);
         }
 
-        function closeWin() {
-            document.getElementById('win-modal').style.display = 'none';
-            sync();
-        }
+        function closeWin() { document.getElementById('win-modal').style.display = 'none'; sync(); }
 
         function goToTab(idx) {
             document.getElementById('main-slider').style.transform = `translateX(-${idx * 100}vw)`;
             document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-            tg.HapticFeedback.impactOccurred('light');
-            if(idx === 3) loadTop();
             if(idx === 1) loadMarket();
+            if(idx === 3) loadTop();
         }
 
         async function loadTop() {
             const top = await api('/get_top');
             document.getElementById('top-list').innerHTML = top.map((u, i) => `
-                <div class="glass p-4 rounded-2xl flex justify-between items-center ${u.username === user.first_name ? 'border-blue-500' : ''}">
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs font-black text-gray-500 w-4">#${i+1}</span>
-                        <img src="${u.photo_url || 'https://ui-avatars.com/api/?name='+u.username}" class="w-8 h-8 rounded-full">
-                        <p class="text-sm font-bold">${u.username}</p>
-                    </div>
-                    <p class="text-yellow-400 font-black text-sm">${u.balance.toLocaleString()} 💎</p>
+                <div class="glass p-4 rounded-2xl flex justify-between items-center">
+                    <p class="text-sm font-bold">#${i+1} ${u.username}</p>
+                    <p class="text-yellow-400 font-black text-sm">${u.balance} 💎</p>
                 </div>
             `).join('');
         }
@@ -302,3 +302,4 @@
     </script>
 </body>
 </html>
+
