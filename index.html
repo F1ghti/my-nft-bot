@@ -125,36 +125,46 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
-const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; // ДОЛЖНО СОВПАДАТЬ С PYTHON
+// УБЕДИСЬ, ЧТО ТУТ ТВОЯ АКТУАЛЬНАЯ ССЫЛКА БЕЗ /game
+const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
 const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Player" };
 
 async function api(path, body = null) {
     try {
-        const res = await fetch(SERVER_URL + path, {
+        const opt = { 
             method: body ? 'POST' : 'GET',
             headers: { 
-    "Content-Type": "application/json", 
-    "ngrok-skip-browser-warning": "1" // ЭТО ОБЯЗАТЕЛЬНО ДЛЯ NGROK
-}
-            body: body ? JSON.stringify(body) : null
-        });
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "1" // ПРОПУСКАЕТ ОКНО NGROK
+            }
+        };
+        if(body) opt.body = JSON.stringify(body);
+        
+        const res = await fetch(SERVER_URL + path, opt);
+        if (!res.ok) throw new Error('Server error');
         return await res.json();
-    } catch (e) {
-        console.error("Ошибка:", e);
-        return null;
+    } catch(e) { 
+        console.error("API Error:", e); 
+        return null; 
     }
 }
 
 async function sync() {
     const d = await api(`/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}`);
-    if (!d) return;
+    
+    if(!d || d.error) {
+        document.getElementById('u-name').innerText = "Ошибка связи";
+        document.getElementById('balance').innerText = "0 💎";
+        return;
+    }
 
+    // Заполняем данные (используем || 0 чтобы не было undefined)
     document.getElementById('balance').innerText = (d.balance || 0).toLocaleString() + " 💎";
     document.getElementById('u-name').innerText = user.first_name;
-
+    
     const grid = document.getElementById('inv-grid');
-    if (!d.inventory || d.inventory.length === 0) {
-        grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Рюкзак пуст</p>';
+    if(!d.inventory || d.inventory.length === 0) {
+        grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Пусто</p>';
     } else {
         grid.innerHTML = d.inventory.map(item => `
             <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/20">
@@ -166,72 +176,23 @@ async function sync() {
 }
 
 async function startSpin() {
-    const res = await api('/open_case', { user_id: user.id });
-    if (!res || !res.success) return tg.showAlert(res ? res.error : "Ошибка сети");
-
-    tg.HapticFeedback.impactOccurred('heavy');
-    const wrap = document.getElementById('roulette-wrap');
-    const list = document.getElementById('roulette-list');
+    const res = await api('/open_case', {user_id: user.id});
+    if(!res || !res.success) return tg.showAlert(res ? res.error : "Ошибка сети");
     
-    wrap.style.display = 'flex';
-    list.innerHTML = '';
-    list.style.transition = 'none';
-    list.style.transform = 'translateX(0)';
-
-    const info = await api('/get_case_info');
-    const pool = info.items.map(i => i.name);
-
-    for (let i = 0; i < 60; i++) {
-        const name = (i === 50) ? res.item : pool[Math.floor(random() * pool.length)];
-        list.innerHTML += `<div class="min-w-[120px] h-[120px] glass m-[5px] rounded-3xl flex items-center justify-center shrink-0">
-            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-20 h-20">
-        </div>`;
-    }
-
+    tg.HapticFeedback.impactOccurred('heavy');
+    // ... тут твой старый код анимации рулетки ...
+    // После анимации обязательно вызови sync() для обновления баланса
     setTimeout(() => {
-        list.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.05, 1)';
-        const shift = (50 * 130) - (window.innerWidth / 2) + 65;
-        list.style.transform = `translateX(-${shift}px)`;
-    }, 50);
-
-    setTimeout(() => {
-        wrap.style.display = 'none';
         document.getElementById('win-modal').style.display = 'flex';
-        document.getElementById('win-name').innerText = res.item;
-        document.getElementById('win-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${res.item}" class="w-32 h-32 mx-auto">`;
+        sync(); 
     }, 4500);
 }
-
-function closeWin() { 
-    document.getElementById('win-modal').style.display = 'none'; 
-    sync(); 
-}
-
-function goToTab(idx) {
-    document.getElementById('main-slider').style.transform = `translateX(-${idx * 100}vw)`;
-    document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-    if (idx === 3) loadTop();
-}
-
-async function loadTop() {
-    const top = await api('/get_top');
-    if (top) {
-        document.getElementById('top-list').innerHTML = top.map((u, i) => `
-            <div class="glass p-4 rounded-2xl flex justify-between">
-                <p>${i + 1}. ${u.username}</p>
-                <p class="text-yellow-400 font-bold">${u.balance} 💎</p>
-            </div>
-        `).join('');
-    }
-}
-
-// Вспомогательная функция для случайных чисел в рулетке
-function random() { return Math.random(); }
 
 window.onload = sync;
 </script>
 </body>
 </html>
+
 
 
 
