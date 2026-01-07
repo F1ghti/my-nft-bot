@@ -7,310 +7,194 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0b1120; color: white; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: #0b1120; color: white; overflow: hidden; }
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
-        
-        /* Важно: 400% для 4-х табов */
-        #main-slider { display: flex; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); height: 100%; width: 400%; }
-        .tab-content { width: 100vw; height: calc(100vh - 120px); overflow-y: auto; padding: 20px 20px 160px 20px; flex-shrink: 0; }
-        
-        #cases { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .nav-btn { transition: all 0.3s ease; position: relative; }
-        #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 20000; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); width: 90%; max-width: 400px; }
+        #main-slider { display: flex; transition: transform 0.4s ease-out; width: 400%; height: 100vh; }
+        .tab-content { width: 100vw; height: 100vh; overflow-y: auto; padding: 20px 20px 120px 20px; flex-shrink: 0; }
+        #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 20000; transition: 0.5s; width: 90%; }
         #toast.show { top: 20px; }
-        
-        #win-modal, #notif-modal, #case-preview-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 11000; align-items: center; justify-content: center; padding: 20px; }
-        #notif-modal, #case-preview-modal { flex-direction: column; justify-content: start; padding-top: 60px; }
-
-        #roulette-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 15000; align-items: center; justify-content: center; }
-        .roulette-window { position: relative; width: 100%; height: 140px; overflow: hidden; border-top: 2px solid #3b82f6; border-bottom: 2px solid #3b82f6; background: #111827; }
-        .roulette-container { display: flex; position: absolute; left: 0; }
-        .marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #f59e0b; z-index: 10; box-shadow: 0 0 15px #f59e0b; transform: translateX(-50%); }
-        
-        .notification-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: #ef4444; border: 2px solid #1e293b; border-radius: 50%; display: none; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        
-        /* Стили для пьедестала в ТОПе */
-        .top-1 { border: 1px solid #f59e0b; background: linear-gradient(to right, rgba(245, 158, 11, 0.1), transparent); }
-        .rank-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; }
+        .nav-btn { transition: 0.3s; opacity: 0.4; font-size: 24px; }
+        .nav-btn.active { opacity: 1; transform: scale(1.2); }
+        #win-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10000; align-items: center; justify-content: center; }
     </style>
 </head>
-<body class="h-screen flex flex-col p-2">
+<body class="flex flex-col">
 
-    <div id="toast" class="glass px-6 py-3 rounded-2xl shadow-2xl border-blue-500/50 flex items-center gap-3">
+    <div id="toast" class="glass px-6 py-4 rounded-2xl flex items-center gap-3 border-b-2 border-blue-500">
         <span id="toast-icon">✨</span>
-        <span id="toast-msg" class="font-bold text-sm"></span>
+        <span id="toast-msg" class="font-bold"></span>
     </div>
 
-    <div id="case-preview-modal">
-        <div class="w-full max-w-sm flex flex-col h-full">
-            <div class="flex justify-between items-center mb-8">
-                <button onclick="closeCasePreview()" class="text-gray-400 text-sm font-bold uppercase tracking-widest">← Назад</button>
-                <h2 class="text-xl font-black italic uppercase text-blue-400">Дроп-лист</h2>
-            </div>
-            <div id="case-items-list" class="grid grid-cols-2 gap-3 overflow-y-auto pr-2 pb-4 flex-1"></div>
-            <div class="pt-4"><button onclick="startSpinFromPreview()" class="w-full bg-blue-600 py-5 rounded-[25px] font-black text-xl shadow-lg active:scale-95 transition-all uppercase italic">Открыть за 100 💎</button></div>
-        </div>
-    </div>
-
-    <div id="win-modal">
-        <div class="glass p-8 rounded-[40px] w-full max-w-sm text-center border-t-2 border-yellow-500 shadow-2xl">
-            <h2 class="text-2xl font-black mb-2 text-yellow-500 uppercase italic">Твой NFT!</h2>
+    <div id="win-modal" class="p-6">
+        <div class="glass p-8 rounded-[40px] w-full max-w-sm text-center border-t-4 border-yellow-500">
+            <h2 class="text-2xl font-black text-yellow-500 uppercase italic">Выпал NFT!</h2>
             <div id="win-item-img" class="my-6"></div>
-            <h3 id="win-item-name" class="text-xl font-bold mb-6 text-white uppercase tracking-tighter">...</h3>
-            <div class="flex flex-col gap-3">
-                <button onclick="closeWinModal()" class="bg-blue-600 py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-all uppercase tracking-widest">В рюкзак</button>
-                <button id="quick-sell-btn" class="bg-white/5 py-4 rounded-2xl font-bold text-gray-400 active:scale-95 transition-all border border-white/10 uppercase text-xs">Продать за <span id="sell-price">0</span> 💎</button>
-            </div>
+            <h3 id="win-item-name" class="text-xl font-bold mb-6 uppercase">...</h3>
+            <button onclick="closeWinModal()" class="w-full bg-blue-600 py-4 rounded-2xl font-black uppercase mb-3">В рюкзак</button>
+            <button id="quick-sell-btn" class="w-full bg-white/10 py-3 rounded-2xl text-xs font-bold text-gray-400">Продать за 80 💎</button>
         </div>
     </div>
 
-    <div id="notif-modal">
-        <div class="glass p-6 rounded-[35px] w-full max-w-sm flex flex-col h-[70vh] border border-blue-500/30 shadow-2xl">
-            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black uppercase italic text-blue-400">События 🔔</h2><button onclick="closeNotif()" class="text-gray-400 text-2xl">&times;</button></div>
-            <div id="notif-list" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
-            <button onclick="clearInternalNotifications()" class="mt-4 bg-white/5 py-3 rounded-xl text-xs font-bold uppercase text-gray-400">Очистить всё</button>
-        </div>
-    </div>
-
-    <div id="roulette-overlay">
-        <div class="text-center w-full"><h2 class="mb-6 text-xl font-bold text-blue-400 uppercase tracking-widest">Генерация...</h2><div class="roulette-window"><div class="marker"></div><div id="roulette-list" class="roulette-container"></div></div></div>
-    </div>
-
-    <div class="p-4 flex justify-between items-center glass rounded-3xl mb-2 shadow-xl shrink-0 z-10">
+    <div class="p-4 flex justify-between items-center glass m-2 rounded-3xl z-50">
         <div class="flex items-center gap-3">
-            <div id="u-pic-placeholder" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold">?</div>
-            <div><p id="u-name" class="text-sm font-bold truncate w-24">...</p><p class="text-[9px] text-blue-400 font-bold uppercase">Elite Member</p></div>
+            <div id="u-avatar" class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold overflow-hidden"></div>
+            <p id="u-name" class="font-bold text-sm">...</p>
         </div>
-        <div class="text-right"><p id="balance" class="text-yellow-400 font-black text-xl">...</p></div>
+        <p id="balance" class="text-yellow-400 font-black text-xl">0 💎</p>
     </div>
 
     <div class="flex-1 overflow-hidden">
         <div id="main-slider">
-            <div id="cases" class="tab-content">
-                <div onclick="openCasePreview()" class="glass p-10 rounded-[50px] border-b-[10px] border-blue-600 active:translate-y-1 active:border-b-[4px] transition-all text-center w-full max-w-xs shadow-2xl">
+            <div class="tab-content flex flex-col items-center justify-center">
+                <div onclick="openCase()" class="glass p-10 rounded-[50px] border-b-[10px] border-blue-600 active:scale-95 transition-all text-center">
                     <div class="text-8xl mb-4">📦</div>
-                    <h3 class="text-2xl font-black uppercase italic">Cyber Case</h3>
-                    <div class="bg-blue-600 py-3 rounded-2xl font-black text-lg shadow-lg mt-6">100 💎</div>
+                    <h3 class="text-2xl font-black uppercase">Cyber Case</h3>
+                    <div class="bg-blue-600 py-3 rounded-2xl font-black mt-6">100 💎</div>
                 </div>
             </div>
-            <div id="market" class="tab-content">
-                <h2 class="text-xl font-black mb-4 uppercase italic text-blue-400">🛒 Маркетплейс</h2>
-                <div id="market-grid" class="flex flex-col gap-2"></div>
+            
+            <div class="tab-content">
+                <h2 class="text-xl font-black mb-4 text-blue-400">🛒 МАРКЕТ</h2>
+                <div id="market-list" class="flex flex-col gap-3 text-center text-gray-500 italic py-10">В разработке...</div>
             </div>
-            <div id="inventory" class="tab-content">
-                <h2 class="text-xl font-black mb-4 uppercase italic text-blue-400">🎒 Твои активы</h2>
+
+            <div class="tab-content">
+                <h2 class="text-xl font-black mb-4 text-blue-400">🎒 МОЙ РЮКЗАК</h2>
                 <div id="inv-grid" class="grid grid-cols-2 gap-3"></div>
             </div>
-            <div id="top-rich" class="tab-content">
-                <h2 class="text-xl font-black mb-4 uppercase italic text-yellow-500">🏆 Топ Элиты</h2>
-                <div id="top-list" class="flex flex-col gap-3">
-                    <p class="text-center text-gray-500 py-10 italic">Загрузка списка лидеров...</p>
-                </div>
+
+            <div class="tab-content">
+                <h2 class="text-xl font-black mb-4 text-yellow-500">🏆 ТОП ИГРОКОВ</h2>
+                <div id="top-list" class="flex flex-col gap-2"></div>
             </div>
         </div>
     </div>
 
-    <div id="nav-bar" class="fixed bottom-6 left-4 right-4 h-20 glass rounded-[35px] flex justify-around items-center z-50 px-2 shadow-2xl">
-        <button onclick="goToTab(0)" id="btn-0" class="nav-btn text-2xl opacity-100">📦</button>
-        <button onclick="goToTab(1)" id="btn-1" class="nav-btn text-2xl opacity-40">🛒</button>
-        <button onclick="goToTab(2)" id="btn-2" class="nav-btn text-2xl opacity-40">🎒</button>
-        <button onclick="goToTab(3)" id="btn-3" class="nav-btn text-2xl opacity-40">🏆</button>
-        <button onclick="openNotif()" class="nav-btn text-2xl opacity-40 relative">
-            🔔<div id="notif-dot" class="notification-badge"></div>
-        </button>
+    <div class="fixed bottom-6 left-4 right-4 h-20 glass rounded-[35px] flex justify-around items-center z-50">
+        <button onclick="goToTab(0)" id="btn-0" class="nav-btn active">📦</button>
+        <button onclick="goToTab(1)" id="btn-1" class="nav-btn">🛒</button>
+        <button onclick="goToTab(2)" id="btn-2" class="nav-btn">🎒</button>
+        <button onclick="goToTab(3)" id="btn-3" class="nav-btn">🏆</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         
-        // ПРОВЕРЬ: URL должен быть актуальным из ngrok
-        const SERVER_URL = "https://12eaff4f4782.ngrok-free.app"; 
-        const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", photo_url: "" };
+        // --- ЗАМЕНИ ЭТОТ URL НА СВОЙ ИЗ NGROK ---
+        const SERVER_URL = "https://ВАШ_NGROK_URL"; 
         
-        let isSpinning = false;
-        let currentTab = 0;
+        const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Игрок", photo_url: "" };
         const fetchHeaders = { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" };
-
-        const CASE_CONTENT = [
-            { name: "Neon NFT", rarity: "rare", chance: "20%" },
-            { name: "Gold NFT", rarity: "legendary", chance: "5%" },
-            { name: "Cyber Sword", rarity: "rare", chance: "20%" },
-            { name: "Void Armor", rarity: "legendary", chance: "10%" },
-            { name: "Ice Ring", rarity: "common", chance: "35%" },
-            { name: "Flame Wings", rarity: "legendary", chance: "10%" }
-        ];
-
-        document.getElementById('u-name').innerText = user.first_name;
-
-        function goToTab(index) {
-            if (isSpinning) return;
-            currentTab = index;
-            document.getElementById('main-slider').style.transform = `translateX(-${index * 100}vw)`;
-            [0,1,2,3].forEach(i => { 
-                const btn = document.getElementById(`btn-${i}`);
-                if(btn) btn.style.opacity = (i === index) ? "1" : "0.4"; 
-            });
-            
-            if (index === 1) loadMarket();
-            if (index === 2) sync();
-            if (index === 3) loadTop();
-            tg.HapticFeedback.impactOccurred('light');
-        }
-
-        // --- ФУНКЦИЯ ПРОДАЖИ (ИСПРАВЛЕНО) ---
-        async function sellItem(itemName) {
-            tg.HapticFeedback.impactOccurred('medium');
-            try {
-                const res = await fetch(`${SERVER_URL}/sell_instantly`, { 
-                    method: 'POST', 
-                    headers: fetchHeaders, 
-                    body: JSON.stringify({user_id: user.id, item_name: itemName}) 
-                });
-                const data = await res.json();
-                if(data.success) { 
-                    showToast("Продано!", "💰"); 
-                    sync(); // Обновляем инвентарь после продажи
-                }
-            } catch(e) {
-                showToast("Ошибка сервера", "📡");
-            }
-        }
-
-        // --- СИНХРОНИЗАЦИЯ (ИСПРАВЛЕНО ДЛЯ АВАТАРОК) ---
-        async function sync() {
-            try {
-                const photoParam = user.photo_url ? `&photo_url=${encodeURIComponent(user.photo_url)}` : '';
-                const res = await fetch(`${SERVER_URL}/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}${photoParam}`, { headers: fetchHeaders });
-                const d = await res.json();
-                
-                document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
-                
-                const grid = document.getElementById('inv-grid');
-                if (d.inventory.length === 0) {
-                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Рюкзак пуст</p>';
-                } else {
-                    grid.innerHTML = d.inventory.map(item => `
-                        <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30 flex flex-col items-center">
-                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
-                            <p class="text-[10px] font-black uppercase mb-3 text-blue-300 truncate w-full">${item}</p>
-                            <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">Продать</button>
-                        </div>
-                    `).join('');
-                }
-            } catch(e) {}
-        }
-
-        // --- ТОП (БЕЗ ИЗМЕНЕНИЙ) ---
-        async function loadTop() {
-            const list = document.getElementById('top-list');
-            try {
-                const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
-                const users = await res.json();
-                list.innerHTML = users.map((u, i) => {
-                    const avatarHtml = u.photo_url 
-                        ? `<img src="${u.photo_url}" class="w-10 h-10 rounded-full object-cover border border-white/20">`
-                        : `<div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold text-xs border border-white/10">${u.username ? u.username[0].toUpperCase() : '?'}</div>`;
-
-                    let rankStyle = i === 0 ? "border border-yellow-500/50 bg-yellow-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]" : "";
-
-                    return `
-                        <div class="glass p-4 rounded-2xl flex justify-between items-center ${rankStyle} ${u.user_id == user.id ? 'ring-1 ring-blue-400' : ''}">
-                            <div class="flex items-center gap-4">
-                                <span class="text-sm font-black ${i < 3 ? 'text-yellow-500' : 'text-gray-500'} w-5">#${i + 1}</span>
-                                ${avatarHtml}
-                                <div>
-                                    <p class="text-sm font-bold truncate w-32">${u.username || 'Аноним'}</p>
-                                    <p class="text-[9px] text-blue-400 font-bold uppercase tracking-wider">Level ${Math.floor(u.balance / 500) + 1}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-black text-yellow-400 text-sm">${u.balance.toLocaleString()} 💎</p>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch(e) { list.innerHTML = '<p class="text-center text-red-400 py-10">Ошибка загрузки</p>'; }
-        }
-
-        // --- ОСТАЛЬНЫЕ ФУНКЦИИ ---
-        function openCasePreview() {
-            if (isSpinning) return;
-            const modal = document.getElementById('case-preview-modal');
-            const list = document.getElementById('case-items-list');
-            list.innerHTML = CASE_CONTENT.map(item => `<div class="glass p-4 rounded-3xl border-b-4 ${item.rarity === 'legendary' ? 'border-yellow-500' : 'border-blue-500/30'} flex flex-col items-center"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item.name}" class="w-16 h-16 mb-2"><p class="text-[9px] font-black uppercase text-center truncate w-full">${item.name}</p><p class="text-[7px] text-blue-400 font-bold mt-1 uppercase">${item.rarity}</p></div>`).join('');
-            modal.style.display = 'flex';
-        }
-
-        function closeCasePreview() { document.getElementById('case-preview-modal').style.display = 'none'; }
-        async function startSpinFromPreview() { closeCasePreview(); await startSpin(); }
-
-        async function startSpin() {
-            if (isSpinning) return;
-            try {
-                const res = await fetch(`${SERVER_URL}/open_case`, { method: 'POST', headers: fetchHeaders, body: JSON.stringify({user_id: user.id}) });
-                const data = await res.json();
-                if(data.error) return showToast("Мало 💎", "❌");
-                isSpinning = true;
-                const overlay = document.getElementById('roulette-overlay');
-                const list = document.getElementById('roulette-list');
-                overlay.style.display = 'flex';
-                list.innerHTML = ''; list.style.transition = 'none'; list.style.transform = 'translateX(0)';
-                const pool = CASE_CONTENT.map(i => i.name);
-                for(let i=0; i<60; i++) {
-                    const name = i === 50 ? data.item : pool[Math.floor(Math.random()*pool.length)];
-                    list.innerHTML += `<div class="min-w-[110px] h-[120px] m-[5px] glass rounded-2xl flex items-center justify-center shrink-0"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${name}" class="w-16 h-16"></div>`;
-                }
-                setTimeout(() => {
-                    list.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.05, 1)';
-                    list.style.transform = `translateX(-${(50 * 120) - (window.innerWidth / 2) + 60}px)`;
-                }, 50);
-                setTimeout(() => { overlay.style.display = 'none'; showWinModal(data.item); }, 4600);
-            } catch(e) { isSpinning = false; }
-        }
-
-        function showWinModal(item) {
-            const modal = document.getElementById('win-modal');
-            document.getElementById('win-item-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-32 h-32 mx-auto">`;
-            document.getElementById('win-item-name').innerText = item;
-            document.getElementById('sell-price').innerText = "80";
-            document.getElementById('quick-sell-btn').onclick = () => quickSell(item);
-            modal.style.display = 'flex';
-        }
-
-        function closeWinModal() { document.getElementById('win-modal').style.display = 'none'; isSpinning = false; sync(); }
-
-        async function quickSell(item) {
-            try {
-                const res = await fetch(`${SERVER_URL}/sell_instantly`, { method: 'POST', headers: fetchHeaders, body: JSON.stringify({user_id: user.id, item_name: item}) });
-                if((await res.json()).success) { showToast("Продано!", "💰"); closeWinModal(); }
-            } catch(e) {}
-        }
-
-        async function loadMarket() {
-            const grid = document.getElementById('market-grid');
-            try {
-                const r = await fetch(`${SERVER_URL}/get_market`, { headers: fetchHeaders });
-                const items = await r.json();
-                grid.innerHTML = items.map(i => `<div class="glass p-4 rounded-3xl flex justify-between items-center border-l-4 border-yellow-500"><div class="flex items-center gap-3"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${i.item_name}" class="w-10 h-10"><div><p class="font-black text-[10px] uppercase">${i.item_name}</p><p class="text-[8px] text-blue-400">@${i.username}</p></div></div><button onclick="buyItem(${i.lot_id})" class="bg-yellow-500 text-black px-4 py-2 rounded-xl font-bold text-xs">${i.price} 💎</button></div>`).join('');
-            } catch(e) {}
-        }
 
         function showToast(msg, icon = '✨') {
             const t = document.getElementById('toast');
             document.getElementById('toast-msg').innerText = msg;
             document.getElementById('toast-icon').innerText = icon;
-            t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        function openNotif() { document.getElementById('notif-modal').style.display = 'flex'; }
-        function closeNotif() { document.getElementById('notif-modal').style.display = 'none'; }
+        async function sync() {
+            try {
+                const url = `${SERVER_URL}/get_user?user_id=${user.id}&username=${encodeURIComponent(user.first_name)}&photo_url=${encodeURIComponent(user.photo_url || "")}`;
+                const res = await fetch(url, { headers: fetchHeaders });
+                const d = await res.json();
+                
+                document.getElementById('balance').innerText = d.balance.toLocaleString() + " 💎";
+                document.getElementById('u-name').innerText = user.first_name;
+                
+                // Аватарка
+                const avatar = document.getElementById('u-avatar');
+                if(user.photo_url) avatar.innerHTML = `<img src="${user.photo_url}" class="w-full h-full object-cover">`;
+                else avatar.innerText = user.first_name[0].toUpperCase();
 
+                // Рюкзак
+                const grid = document.getElementById('inv-grid');
+                if(!d.inventory || d.inventory.length === 0) {
+                    grid.innerHTML = '<p class="col-span-2 text-center text-gray-500 py-10 italic">Пусто</p>';
+                } else {
+                    grid.innerHTML = d.inventory.map(item => `
+                        <div class="glass p-4 rounded-3xl text-center border-b-4 border-blue-500/30">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${item}" class="w-16 h-16 mx-auto mb-2">
+                            <p class="text-[10px] font-black uppercase mb-3 truncate">${item}</p>
+                            <button onclick="sellItem('${item}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all">Продать</button>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function openCase() {
+            tg.HapticFeedback.impactOccurred('medium');
+            try {
+                const res = await fetch(`${SERVER_URL}/open_case`, {
+                    method: 'POST',
+                    headers: fetchHeaders,
+                    body: JSON.stringify({ user_id: user.id })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('win-item-name').innerText = data.item;
+                    document.getElementById('win-item-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${data.item}" class="w-32 h-32 mx-auto">`;
+                    document.getElementById('quick-sell-btn').onclick = () => sellItem(data.item, true);
+                    document.getElementById('win-modal').style.display = 'flex';
+                } else {
+                    showToast(data.error, "❌");
+                }
+            } catch(e) { showToast("Ошибка сервера", "📡"); }
+        }
+
+        async function sellItem(itemName, fromModal = false) {
+            tg.HapticFeedback.notificationOccurred('success');
+            try {
+                const res = await fetch(`${SERVER_URL}/sell_instantly`, {
+                    method: 'POST',
+                    headers: fetchHeaders,
+                    body: JSON.stringify({ user_id: user.id, item_name: itemName })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showToast(`Продано! +${data.new_balance} 💎`, "💰");
+                    if(fromModal) closeWinModal();
+                    await sync();
+                }
+            } catch(e) { showToast("Ошибка продажи", "❌"); }
+        }
+
+        async function loadTop() {
+            try {
+                const res = await fetch(`${SERVER_URL}/get_top`, { headers: fetchHeaders });
+                const users = await res.json();
+                document.getElementById('top-list').innerHTML = users.map((u, i) => `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center ${u.user_id == user.id ? 'border border-blue-400' : ''}">
+                        <div class="flex items-center gap-3">
+                            <span class="font-black text-gray-500 w-6">#${i+1}</span>
+                            <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center text-[10px] overflow-hidden">
+                                ${u.photo_url ? `<img src="${u.photo_url}">` : (u.username ? u.username[0] : '?')}
+                            </div>
+                            <p class="text-sm font-bold truncate w-32">${u.username || 'Аноним'}</p>
+                        </div>
+                        <p class="font-black text-yellow-400">${u.balance.toLocaleString()} 💎</p>
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        function goToTab(i) {
+            document.getElementById('main-slider').style.transform = `translateX(-${i * 100}vw)`;
+            document.querySelectorAll('.nav-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === i);
+            });
+            if(i === 2) sync();
+            if(i === 3) loadTop();
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        function closeWinModal() { document.getElementById('win-modal').style.display = 'none'; sync(); }
+
+        // Запуск
         sync();
     </script>
 </body>
 </html>
-
-
